@@ -1,0 +1,1127 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wakkerdam Spelleider</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;1,400&display=swap">
+<style>
+/* Layout: één smalle kolom als het kladblok van de spelleider, vaste tabbalk onderin.
+   De fase kleurt de hele pagina: nacht is inktblauw met maanlicht, dag is bleek hooi. */
+:root {
+  --bg: #0e1322;
+  --surface: #161d30;
+  --raised: #1f2842;
+  --line: #2c3654;
+  --fg: #e9e4d6;
+  --muted: #929bb1;
+  --accent: #e2bb5f;
+  --accent-ink: #1b1505;
+  --wolf: #e0676b;
+  --good: #79c497;
+  --warn: #e9a653;
+  --f-display: "IM Fell English SC", "Iowan Old Style", Georgia, serif;
+  --f-body: "Alegreya Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --radius: 14px;
+  color-scheme: dark;
+}
+:root[data-phase="day"] {
+  --bg: #e6e9e0;
+  --surface: #f5f6f1;
+  --raised: #ffffff;
+  --line: #cbd1c3;
+  --fg: #1b211e;
+  --muted: #5a645d;
+  --accent: #94600f;
+  --accent-ink: #fffaf0;
+  --wolf: #b2353b;
+  --good: #2c7a4d;
+  --warn: #9d5e0c;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--f-body);
+  font-size: 17px;
+  line-height: 1.45;
+  transition: background-color .6s ease;
+}
+@media (prefers-reduced-motion: reduce) { body { transition: none; } }
+[hidden] { display: none !important; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.wrap { max-width: 640px; margin: 0 auto; padding-inline: 16px; padding-block: 0 120px; }
+
+/* Kop */
+.top {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  transition: background-color .6s ease;
+}
+.top-in { max-width: 640px; margin: 0 auto; padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
+.emblem { flex: none; width: 34px; height: 34px; border-radius: 50%; box-shadow: inset 10px -5px 0 0 var(--accent); transform: rotate(-20deg); }
+:root[data-phase="day"] .emblem { background: var(--accent); box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 22%, transparent); transform: none; }
+.top-title { min-width: 0; flex: 1; }
+.top h1 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: 1.6rem; line-height: 1.1; }
+.top p { margin: 0; color: var(--muted); font-size: .9rem; }
+
+/* Tabbalk */
+.tabs {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+  background: var(--surface); border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.tabs-in { max-width: 640px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); }
+.tabs button { background: none; border: 0; padding: 14px 8px; color: var(--muted); font-weight: 500; letter-spacing: .06em; text-transform: uppercase; font-size: .8rem; cursor: pointer; border-top: 3px solid transparent; }
+.tabs button[aria-current="page"] { color: var(--fg); border-top-color: var(--accent); }
+
+/* Typografie */
+h2 { font-family: var(--f-display); font-weight: 400; font-size: 1.55rem; line-height: 1.15; margin: 0; text-wrap: balance; }
+h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 0; font-weight: 700; }
+.eyebrow { margin: 0; font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.small { font-size: .9rem; }
+p { margin: 0; }
+
+.stack { display: flex; flex-direction: column; gap: 14px; }
+section.block { display: flex; flex-direction: column; gap: 12px; margin-top: 22px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.card.alert { border-color: var(--accent); }
+.card.win { border-color: var(--good); }
+
+/* Knoppen */
+.btns { display: flex; flex-wrap: wrap; gap: 10px; }
+.btn { min-height: 46px; padding: 10px 18px; border-radius: 999px; border: 1px solid var(--line); background: var(--raised); cursor: pointer; font-weight: 500; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+.btn.danger { border-color: var(--wolf); color: var(--wolf); background: transparent; }
+.btn.quiet { background: transparent; }
+.btn.full { width: 100%; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn.sm { min-height: 36px; padding: 6px 12px; font-size: .9rem; }
+
+/* Voorleestekst */
+.script { background: var(--raised); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+.script .label { font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.script p { font-style: italic; font-size: 1.1rem; }
+
+/* Volgorde van de nacht */
+.order { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.order li { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border-radius: 999px; border: 1px solid var(--line); font-size: .85rem; color: var(--muted); }
+.order li span { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--raised); font-variant-numeric: tabular-nums; font-size: .75rem; }
+.order li.done { opacity: .55; }
+.order li.done span { background: transparent; }
+.order li.done span::before { content: "✓"; }
+.order li.done span b { display: none; }
+.order li.now { border-color: var(--accent); color: var(--fg); }
+.order li.now span { background: var(--accent); color: var(--accent-ink); }
+.order li.dead { text-decoration: line-through; }
+
+/* Spelerskeuze */
+.picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.pick { min-height: 52px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); cursor: pointer; text-align: left; display: flex; flex-direction: column; justify-content: center; gap: 1px; min-width: 0; overflow-wrap: anywhere; }
+.pick small { color: var(--muted); font-size: .75rem; }
+.pick.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.pick.on small { color: inherit; opacity: .8; }
+
+/* Labels / chips */
+.tags { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.tag { font-size: .72rem; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; letter-spacing: .02em; }
+.tag.wolf { border-color: var(--wolf); color: var(--wolf); }
+.tag.solo { border-color: var(--warn); color: var(--warn); }
+.tag.acc { border-color: var(--accent); color: var(--accent); }
+.tag.good { border-color: var(--good); color: var(--good); }
+
+.note { font-size: .92rem; color: var(--muted); }
+.note.warn { color: var(--warn); }
+.note.bad { color: var(--wolf); }
+.big-reveal { font-family: var(--f-display); font-size: 2rem; line-height: 1.1; }
+
+/* Lijsten */
+.rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.rows > li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.rows > li:first-child { border-top: 0; }
+.rows .grow { flex: 1; min-width: 0; }
+.rows .num { width: 1.6em; color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; flex: none; }
+.rows .dead .pname, .rows li.dead .pname { text-decoration: line-through; color: var(--muted); }
+.pname { font-weight: 700; overflow-wrap: anywhere; }
+input[type="text"], select { min-height: 42px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); padding: 6px 10px; max-width: 100%; }
+input[type="text"] { width: 100%; }
+.setup-row input[type="text"] { flex: 1 1 140px; width: auto; min-width: 0; }
+.setup-row select { flex: 0 1 170px; min-width: 0; }
+.addrow { display: flex; gap: 8px; }
+.addrow input { flex: 1; min-width: 0; }
+
+.stepper { display: inline-flex; align-items: center; gap: 4px; flex: none; }
+.stepper button { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: var(--raised); cursor: pointer; font-size: 1.2rem; line-height: 1; }
+.stepper output { min-width: 1.8em; text-align: center; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 1.1rem; }
+.role-desc { font-size: .85rem; color: var(--muted); }
+
+.status { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.check { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.check input { width: 22px; height: 22px; margin: 2px 0 0; accent-color: var(--accent); flex: none; }
+
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.fact { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--surface); min-width: 0; }
+.fact h3 { margin-bottom: 2px; }
+.fact p { overflow-wrap: anywhere; }
+
+.log-round { display: flex; flex-direction: column; gap: 6px; }
+.log-round ul { margin: 0; padding-left: 1.1em; display: flex; flex-direction: column; gap: 4px; }
+.log-round li::marker { color: var(--muted); }
+
+.vote .ctr { display: inline-flex; align-items: center; gap: 4px; }
+.vote .vname { background: none; border: 0; padding: 4px 0; text-align: left; cursor: pointer; flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.vote li.on { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+
+/* Rolkaart doorgeven */
+.overlay { position: fixed; inset: 0; z-index: 20; background: var(--bg); display: grid; place-items: center; padding: 24px 16px; padding-top: calc(24px + env(safe-area-inset-top, 0px)); padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
+.overlay .card { width: 100%; max-width: 420px; text-align: center; align-items: center; }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <div class="emblem" aria-hidden="true"></div>
+    <div class="top-title">
+      <h1 id="phase-title">Voorbereiding</h1>
+      <p id="phase-sub"></p>
+    </div>
+    <button type="button" class="btn sm quiet" id="undo-btn" data-action="undo">Ongedaan maken</button>
+  </div>
+</header>
+<main class="wrap" id="main"></main>
+<nav class="tabs" aria-label="Onderdelen">
+  <div class="tabs-in">
+    <button type="button" data-action="tab" data-tab="spel">Spel</button>
+    <button type="button" data-action="tab" data-tab="spelers">Spelers</button>
+    <button type="button" data-action="tab" data-tab="log">Logboek</button>
+  </div>
+</nav>
+<div id="overlay" class="overlay" hidden></div>
+<noscript><p style="padding:16px">Deze app heeft JavaScript nodig.</p></noscript>
+
+<script>
+(function () {
+  "use strict";
+
+  const KEY = "wakkerdam-spelleider-v1";
+
+  const ROLES = {
+    weerwolf:    { name: "Weerwolf",       team: "wolf", desc: "Kiest elke nacht samen met de andere weerwolven een slachtoffer." },
+    burger:      { name: "Burger",         team: "dorp", desc: "Geen speciale kracht. Stemt overdag mee." },
+    ziener:      { name: "Ziener",         team: "dorp", desc: "Bekijkt elke nacht de kaart van één speler." },
+    heks:        { name: "Heks",           team: "dorp", desc: "Heeft één levensdrank en één gifdrank voor het hele spel." },
+    jager:       { name: "Jager",          team: "dorp", desc: "Schiet bij zijn dood direct iemand neer." },
+    cupido:      { name: "Cupido",         team: "dorp", desc: "Maakt in de eerste nacht twee spelers verliefd. Sterft de een, dan sterft de ander ook." },
+    meisje:      { name: "Klein meisje",   team: "dorp", desc: "Mag stiekem gluren als de weerwolven wakker zijn." },
+    beschermer:  { name: "Beschermer",     team: "dorp", desc: "Beschermt elke nacht één speler tegen de weerwolven, nooit twee nachten achter elkaar dezelfde." },
+    oudste:      { name: "Dorpsoudste",    team: "dorp", desc: "Overleeft de eerste aanval van de weerwolven." },
+    dorpsgek:    { name: "Dorpsgek",       team: "dorp", desc: "Wordt hij weggestemd, dan blijft hij leven maar verliest hij zijn stemrecht." },
+    zondebok:    { name: "Zondebok",       team: "dorp", desc: "Sterft bij een gelijke stand in plaats van de anderen." },
+    raaf:        { name: "Raaf",           team: "dorp", desc: "Geeft elke nacht één speler twee extra stemmen tegen zich." },
+    wildkind:    { name: "Wild kind",      team: "dorp", desc: "Kiest in de eerste nacht een voorbeeld. Sterft dat voorbeeld, dan wordt het kind een weerwolf." },
+    zus:         { name: "Zus",            team: "dorp", desc: "De twee zussen kennen elkaar en weten dus dat ze allebei burger zijn." },
+    dief:        { name: "Dief",           team: "dorp", desc: "Mag in de eerste nacht zijn kaart ruilen met een van de twee overgebleven kaarten." },
+    wittewolf:   { name: "Witte weerwolf", team: "solo", desc: "Wordt wakker met de weerwolven, maar mag om de nacht een weerwolf doden. Wint alleen." },
+    fluitspeler: { name: "Fluitspeler",    team: "solo", desc: "Betovert elke nacht twee spelers. Wint als iedereen die nog leeft betoverd is." }
+  };
+  const ORDER = Object.keys(ROLES);
+  const TEAM = { dorp: "Dorp", wolf: "Weerwolf", solo: "Solo" };
+  const CAUSE = {
+    weerwolven: "gedood door de weerwolven",
+    wittewolf: "gedood door de Witte weerwolf",
+    gif: "vergiftigd door de Heks",
+    stem: "weggestemd door het dorp",
+    jager: "neergeschoten door de Jager",
+    liefde: "gestorven van liefdesverdriet",
+    spelleider: "door de spelleider op dood gezet"
+  };
+  const SAMPLE = ["Anouk", "Bram", "Daan", "Eva", "Fleur", "Jesse", "Lotte", "Milan"];
+
+  /* ---------- staat ---------- */
+
+  function mkPlayer(id, name) {
+    return { id, name, role: null, orig: null, alive: true, lover: false, charmed: false, mayor: false, canVote: true, elderHit: false, revealed: false };
+  }
+  function emptyDeck() { const d = {}; ORDER.forEach(r => (d[r] = 0)); return d; }
+  function defaultDeck(n) {
+    const d = emptyDeck();
+    d.weerwolf = Math.max(1, Math.round(n / 4));
+    let left = n - d.weerwolf;
+    for (const r of ["ziener", "heks", "jager", "cupido", "meisje"]) {
+      if (left <= 1) break;
+      d[r] = 1; left--;
+    }
+    d.burger = Math.max(0, left);
+    return d;
+  }
+  function freshNight() { return { done: [], wolfTarget: null, protect: null, healed: false, poison: null, whiteKill: null, raven: null, seen: null }; }
+  function freshDay() { return { votes: {}, voted: false, out: null, electionDone: false, raven: null }; }
+  function newState(names, sample) {
+    const players = names.map((n, i) => mkPlayer(i + 1, n));
+    return {
+      v: 1, phase: "setup", round: 1, nextId: players.length + 1, players, sample: !!sample,
+      deck: defaultDeck(players.length), opts: { callDead: true, mayor: true },
+      witch: { heal: true, poison: true }, lastProtected: null, wildModel: null,
+      night: freshNight(), day: freshDay(), pending: [], recent: [], log: [], dismissed: null
+    };
+  }
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw) { const o = JSON.parse(raw); if (o && o.v === 1) return o; }
+    } catch (e) { /* geen opslag beschikbaar */ }
+    return null;
+  }
+  function persist() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* negeren */ } }
+
+  let S = load() || newState(SAMPLE, true);
+  let hist = [];
+  let ui = { tab: "spel", picks: {}, pickKey: null, voteSel: null, reveal: null, confirmNew: false };
+
+  function act(fn) {
+    hist.push(JSON.stringify(S));
+    if (hist.length > 80) hist.shift();
+    fn();
+    ui.picks = {};
+    persist();
+    render();
+  }
+  function undo() {
+    if (!hist.length) return;
+    S = JSON.parse(hist.pop());
+    ui.picks = {}; ui.voteSel = null;
+    persist();
+    render();
+  }
+
+  /* ---------- hulpjes ---------- */
+
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const P = id => S.players.find(p => p.id === id);
+  const nameOf = id => { const p = P(id); return p ? p.name : "?"; };
+  const living = () => S.players.filter(p => p.alive);
+  const holders = r => S.players.filter(p => p.role === r);
+  const missing = r => Math.max(0, (S.deck[r] || 0) - holders(r).length);
+  const unknownAlive = () => living().filter(p => !p.role);
+  const isWolf = p => p.role === "weerwolf" || p.role === "wittewolf";
+  const roleLabel = p => p.role ? ROLES[p.role].name + (p.orig ? " (was " + ROLES[p.orig].name + ")" : "") : "Onbekend";
+  const list = names => names.length <= 1 ? names.join("") : names.slice(0, -1).join(", ") + " en " + names[names.length - 1];
+  const picks = ns => ui.picks[ns] || [];
+
+  function roleStatus(r) {
+    const h = holders(r);
+    if (!(S.deck[r] > 0) && !h.length) return "none";
+    if (h.some(p => p.alive)) return "alive";
+    if (missing(r) > 0 && unknownAlive().length) return "alive";
+    return "dead";
+  }
+  function wolfStatus() {
+    const a = roleStatus("weerwolf"), b = roleStatus("wittewolf");
+    if (a === "alive" || b === "alive") return "alive";
+    if (a === "none" && b === "none") return "none";
+    return "dead";
+  }
+  function log(t) { S.log.push({ r: S.round, ph: S.phase, t }); }
+
+  /* ---------- sterven ---------- */
+
+  function killPlayer(id, cause) {
+    const p = P(id);
+    if (!p || !p.alive) return;
+    if (!p.role) { S.pending.push({ type: "reveal", id, cause }); return; }
+    finishKill(p, cause);
+  }
+  function finishKill(p, cause) {
+    if (cause === "weerwolven" && p.role === "oudste" && !p.elderHit) {
+      p.elderHit = true;
+      log(p.name + " (Dorpsoudste) is aangevallen door de weerwolven en heeft het overleefd.");
+      return;
+    }
+    if (cause === "stem" && p.role === "dorpsgek" && !p.revealed) {
+      p.revealed = true; p.canVote = false;
+      log(p.name + " is weggestemd maar blijkt de Dorpsgek. Blijft leven, mag niet meer stemmen.");
+      S.recent.push({ id: p.id, cause: "dorpsgek" });
+      return;
+    }
+    p.alive = false;
+    S.recent.push({ id: p.id, cause });
+    log(p.name + " (" + roleLabel(p) + ") is " + CAUSE[cause] + ".");
+    if (p.mayor) {
+      p.mayor = false;
+      if (living().length) S.pending.push({ type: "burgemeester", id: p.id });
+    }
+    if (p.role === "jager") S.pending.push({ type: "jager", id: p.id });
+    if (p.lover) {
+      const other = S.players.find(q => q.lover && q.id !== p.id && q.alive);
+      if (other) killPlayer(other.id, "liefde");
+    }
+    if (S.wildModel === p.id) {
+      const kid = S.players.find(q => q.alive && q.role === "wildkind");
+      if (kid) {
+        kid.orig = "wildkind"; kid.role = "weerwolf";
+        log(kid.name + " (Wild kind) verliest zijn voorbeeld en is nu een weerwolf. Hij wordt voortaan met de weerwolven wakker.");
+      }
+    }
+  }
+
+  /* ---------- winnaar ---------- */
+
+  function winner() {
+    if (S.phase !== "night" && S.phase !== "day") return null;
+    if (S.pending.length) return null;
+    const L = living();
+    if (!L.length) return { key: "niemand", text: "Iedereen is dood. Niemand wint." };
+    if (L.length === 2 && L.every(p => p.lover)) return { key: "geliefden", text: "Alleen de geliefden " + list(L.map(p => p.name)) + " zijn over. Zij winnen samen." };
+    const piper = L.find(p => p.role === "fluitspeler");
+    if (piper && L.every(p => p === piper || p.charmed)) return { key: "fluitspeler", text: "Iedereen is betoverd. De Fluitspeler (" + piper.name + ") wint." };
+    const hidden = unknownAlive().length > 0 && (missing("weerwolf") > 0 || missing("wittewolf") > 0);
+    if (hidden) return null;
+    const wolves = L.filter(isWolf);
+    const white = L.find(p => p.role === "wittewolf");
+    if (L.length === 1 && white) return { key: "wittewolf", text: "De Witte weerwolf (" + white.name + ") is als enige over en wint." };
+    if (!wolves.length && !piper) return { key: "dorp", text: "Alle weerwolven zijn dood. Het dorp wint!" };
+    if (wolves.length === L.length && !white) return { key: "wolven", text: "Er leven alleen nog weerwolven. De weerwolven winnen!" };
+    return null;
+  }
+
+  /* ---------- de nacht ---------- */
+
+  const STEPS = [
+    { id: "dief", role: "dief", first: true, title: "De Dief",
+      script: "Dief, word wakker. Je mag je kaart ruilen met een van de twee kaarten in het midden." },
+    { id: "cupido", role: "cupido", first: true, title: "Cupido",
+      script: "Cupido, word wakker. Wijs twee spelers aan die verliefd op elkaar worden. Sluit je ogen weer." },
+    { id: "geliefden", first: true, title: "De geliefden", cond: () => S.players.filter(p => p.lover).length === 2,
+      script: "Ik tik de geliefden aan. Geliefden, word wakker en kijk elkaar aan. Sluit je ogen weer." },
+    { id: "zussen", role: "zus", first: true, title: "De zussen", cond: () => (S.deck.zus || 0) >= 2 || holders("zus").length >= 2,
+      script: "Zussen, word wakker en kijk elkaar aan. Sluit je ogen weer." },
+    { id: "wildkind", role: "wildkind", first: true, title: "Het wilde kind",
+      script: "Wild kind, word wakker. Wijs je voorbeeld aan. Sluit je ogen weer." },
+    { id: "beschermer", role: "beschermer", title: "De Beschermer",
+      script: "Beschermer, word wakker. Wie wil je vannacht beschermen? Sluit je ogen weer." },
+    { id: "ziener", role: "ziener", title: "De Ziener",
+      script: "Ziener, word wakker. Wijs iemand aan van wie je de kaart wilt zien. Sluit je ogen weer." },
+    { id: "weerwolven", role: "weerwolf", title: "De Weerwolven",
+      script: "Weerwolven, word wakker. Kies samen een slachtoffer. Sluit je ogen weer." },
+    { id: "wittewolf", role: "wittewolf", even: true, title: "De Witte weerwolf",
+      script: "Witte weerwolf, word nog een keer wakker. Wil je een weerwolf doden? Sluit je ogen weer." },
+    { id: "heks", role: "heks", title: "De Heks",
+      script: "Heks, word wakker. Dit is het slachtoffer van vannacht. Wil je je levensdrank gebruiken? En je gifdrank? Sluit je ogen weer." },
+    { id: "raaf", role: "raaf", title: "De Raaf",
+      script: "Raaf, word wakker. Wie krijgt morgen twee extra stemmen tegen zich? Sluit je ogen weer." },
+    { id: "fluitspeler", role: "fluitspeler", title: "De Fluitspeler",
+      script: "Fluitspeler, word wakker. Wijs twee spelers aan die je wilt betoveren. Sluit je ogen weer." },
+    { id: "betoverden", title: "De betoverden", cond: () => roleStatus("fluitspeler") !== "none" && living().some(p => p.charmed),
+      script: "Ik tik de betoverde spelers aan. Betoverden, word wakker en kijk wie er allemaal betoverd zijn. Sluit je ogen weer." },
+    { id: "dageraad", title: "De dageraad",
+      script: "De zon komt op. Iedereen wordt wakker…" }
+  ];
+
+  function stepList() {
+    const out = [];
+    for (const s of STEPS) {
+      if (s.first && S.round !== 1) continue;
+      if (s.even && S.round % 2 !== 0) continue;
+      if (s.cond && !s.cond()) continue;
+      let dead = false;
+      if (s.role) {
+        const st = s.id === "weerwolven" ? wolfStatus() : roleStatus(s.role);
+        if (st === "none") continue;
+        if (st === "dead") { if (!S.opts.callDead) continue; dead = true; }
+      }
+      out.push(Object.assign({}, s, { dead }));
+    }
+    return out;
+  }
+  function done(id) { if (!S.night.done.includes(id)) S.night.done.push(id); }
+
+  function resolveNight() {
+    const n = S.night;
+    S.recent = [];
+    S.lastProtected = n.protect;
+    if (n.wolfTarget) {
+      const t = P(n.wolfTarget);
+      if (n.wolfTarget === n.protect) log(t.name + " is aangevallen door de weerwolven maar was beschermd door de Beschermer.");
+      else if (n.healed) log(t.name + " is aangevallen door de weerwolven maar gered door de Heks.");
+      else killPlayer(n.wolfTarget, "weerwolven");
+    }
+    if (n.whiteKill) killPlayer(n.whiteKill, "wittewolf");
+    if (n.poison) killPlayer(n.poison, "gif");
+    S.phase = "day";
+    S.day = freshDay();
+    if (n.raven) {
+      const p = P(n.raven);
+      if (p && p.alive) { S.day.votes[p.id] = 2; S.day.raven = p.id; }
+    }
+    log("Het wordt dag " + S.round + ".");
+  }
+
+  function startNight() {
+    S.round += 1;
+    S.phase = "night";
+    S.night = freshNight();
+    S.recent = [];
+    log("Nacht " + S.round + " begint.");
+  }
+
+  /* ---------- weergave ---------- */
+
+  function render() {
+    document.documentElement.dataset.phase = S.phase === "day" ? "day" : "night";
+    const L = living();
+    const title = { setup: "Voorbereiding", night: "Nacht " + S.round, day: "Dag " + S.round, end: "Einde van het spel" }[S.phase];
+    document.getElementById("phase-title").textContent = title;
+    document.getElementById("phase-sub").textContent = S.phase === "setup"
+      ? S.players.length + " spelers aan tafel"
+      : L.length + " van de " + S.players.length + " spelers leven nog";
+    document.title = "Wakkerdam Spelleider";
+    document.getElementById("undo-btn").disabled = !hist.length;
+    document.querySelectorAll(".tabs button").forEach(b => {
+      if (b.dataset.tab === ui.tab) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+    });
+    const main = document.getElementById("main");
+    let h = "";
+    if (ui.tab === "spel") {
+      if (S.phase === "setup") h = renderSetup();
+      else if (S.phase === "night") h = renderNight();
+      else if (S.phase === "day") h = renderDay();
+      else h = renderEnd();
+    } else if (ui.tab === "spelers") h = renderPlayers();
+    else h = renderLog();
+    main.innerHTML = h;
+    renderOverlay();
+  }
+
+  function picker(ns, max, cands) {
+    const sel = picks(ns);
+    if (!cands.length) return '<p class="note">Er is niemand om te kiezen.</p>';
+    return '<div class="picker">' + cands.map(p =>
+      '<button type="button" class="pick' + (sel.includes(p.id) ? " on" : "") + '" aria-pressed="' + sel.includes(p.id) + '" data-action="pick" data-ns="' + ns + '" data-max="' + max + '" data-id="' + p.id + '">' +
+      esc(p.name) + '<small>' + esc(p.role ? ROLES[p.role].name : "rol onbekend") + (p.lover ? " · geliefde" : "") + (p.charmed ? " · betoverd" : "") + "</small></button>"
+    ).join("") + "</div>";
+  }
+  function teamTag(r) {
+    const t = ROLES[r].team;
+    return '<span class="tag ' + (t === "wolf" ? "wolf" : t === "solo" ? "solo" : "") + '">' + TEAM[t] + "</span>";
+  }
+  function playerTags(p) {
+    const t = [];
+    if (p.mayor) t.push('<span class="tag acc">Burgemeester</span>');
+    if (p.lover) t.push('<span class="tag wolf">Geliefde</span>');
+    if (p.charmed) t.push('<span class="tag solo">Betoverd</span>');
+    if (!p.canVote) t.push('<span class="tag">Geen stemrecht</span>');
+    if (p.elderHit) t.push('<span class="tag">Aanval overleefd</span>');
+    if (S.wildModel === p.id) t.push('<span class="tag">Voorbeeld wild kind</span>');
+    if (!p.alive) t.push('<span class="tag">Dood</span>');
+    return t.length ? '<span class="tags">' + t.join("") + "</span>" : "";
+  }
+
+  /* --- voorbereiding --- */
+
+  function setupProblems() {
+    const errs = [];
+    const n = S.players.length;
+    const total = ORDER.reduce((a, r) => a + (S.deck[r] || 0), 0);
+    if (n < 4) errs.push("Je hebt minstens 4 spelers nodig.");
+    if (S.players.some(p => !p.name.trim())) errs.push("Niet iedere speler heeft een naam.");
+    if (total !== n) errs.push("Er zijn " + total + " kaarten voor " + n + " spelers. Dat moet gelijk zijn.");
+    if (!(S.deck.weerwolf > 0) && !(S.deck.wittewolf > 0)) errs.push("Er moet minstens één weerwolf meedoen.");
+    for (const r of ORDER) {
+      const c = holders(r).length;
+      if (c > (S.deck[r] || 0)) errs.push(c + "× " + ROLES[r].name + " toegewezen, maar er " + ((S.deck[r] || 0) === 1 ? "is" : "zijn") + " maar " + (S.deck[r] || 0) + " in het spel.");
+    }
+    return errs;
+  }
+
+  function roleOptions(sel, withUnknown) {
+    return (withUnknown ? '<option value=""' + (sel ? "" : " selected") + ">? Nog onbekend</option>" : "") +
+      ORDER.map(r => '<option value="' + r + '"' + (sel === r ? " selected" : "") + ">" + ROLES[r].name + "</option>").join("");
+  }
+
+  function renderSetup() {
+    const n = S.players.length;
+    const total = ORDER.reduce((a, r) => a + (S.deck[r] || 0), 0);
+    const errs = setupProblems();
+    const allKnown = S.players.every(p => p.role);
+    let h = '<section class="block"><div><h2>Spelers</h2><p class="note">In de volgorde waarin ze aan tafel zitten.</p></div>';
+    if (S.sample) h += '<p class="note warn">Dit zijn voorbeeldnamen. Pas ze aan of verwijder ze.</p>';
+    h += '<ol class="rows">' + S.players.map((p, i) =>
+      '<li class="setup-row"><span class="num">' + (i + 1) + "</span>" +
+      '<input type="text" id="name-' + p.id + '" aria-label="Naam speler ' + (i + 1) + '" value="' + esc(p.name) + '" data-change="rename" data-id="' + p.id + '">' +
+      '<select id="role-' + p.id + '" aria-label="Rol van ' + esc(p.name) + '" data-change="setrole" data-id="' + p.id + '">' + roleOptions(p.role, true) + "</select>" +
+      '<button type="button" class="btn sm quiet" data-action="remove-player" data-id="' + p.id + '" aria-label="Verwijder ' + esc(p.name) + '">Verwijder</button></li>'
+    ).join("") + "</ol>";
+    h += '<div class="addrow"><input type="text" id="new-name" placeholder="Naam van een nieuwe speler" aria-label="Naam van een nieuwe speler"><button type="button" class="btn" data-action="add-player">Toevoegen</button></div></section>';
+
+    h += '<section class="block"><div class="status"><h2>Kaarten in het spel</h2><span class="tag ' + (total === n ? "good" : "wolf") + '">' + total + " kaarten · " + n + " spelers</span></div>";
+    h += '<p class="note">Speel je met de Dief? Leg twee extra kaarten apart. Die tel je hier niet mee.</p>';
+    h += '<ul class="rows">' + ORDER.map(r =>
+      '<li><div class="grow"><div class="status"><span class="pname">' + ROLES[r].name + "</span>" + teamTag(r) + '</div><p class="role-desc">' + ROLES[r].desc + "</p></div>" +
+      '<div class="stepper"><button type="button" data-action="deck" data-role="' + r + '" data-delta="-1" aria-label="Eén ' + ROLES[r].name + ' minder">−</button><output>' + (S.deck[r] || 0) + '</output><button type="button" data-action="deck" data-role="' + r + '" data-delta="1" aria-label="Eén ' + ROLES[r].name + ' meer">+</button></div></li>'
+    ).join("") + "</ul></section>";
+
+    h += '<section class="block"><h2>Instellingen</h2>' +
+      '<label class="check"><input type="checkbox" id="opt-callDead" data-change="opt" data-key="callDead"' + (S.opts.callDead ? " checked" : "") + '><span>Dode rollen toch afroepen<br><span class="note">Zo verraad je niet welke rollen al dood zijn.</span></span></label>' +
+      '<label class="check"><input type="checkbox" id="opt-mayor" data-change="opt" data-key="mayor"' + (S.opts.mayor ? " checked" : "") + '><span>Met burgemeester<br><span class="note">Op de eerste dag wordt een burgemeester gekozen. Zijn stem telt dubbel.</span></span></label></section>';
+
+    h += '<section class="block"><h2>Rollen verdelen</h2>' +
+      '<p class="note">Deel je echte kaarten uit? Laat de rollen dan op “onbekend” staan. In de eerste nacht vraagt de app wie er wakker wordt. Rollen die niet wakker worden vul je in zodra die speler sterft.</p>' +
+      '<div class="btns"><button type="button" class="btn" data-action="deal"' + (ORDER.reduce((a, r) => a + (S.deck[r] || 0), 0) === n ? "" : " disabled") + '>Willekeurig delen</button>' +
+      '<button type="button" class="btn" data-action="show-roles"' + (allKnown ? "" : " disabled") + '>Rollen laten zien</button>' +
+      '<button type="button" class="btn quiet" data-action="clear-roles">Rollen wissen</button></div>' +
+      (allKnown ? "" : '<p class="note">“Rollen laten zien” werkt als iedere speler een rol heeft. Daarmee geef je de telefoon rond.</p>') + "</section>";
+
+    h += '<section class="block">' + errs.map(e => '<p class="note bad">' + esc(e) + "</p>").join("") +
+      '<button type="button" class="btn primary full" data-action="start"' + (errs.length ? " disabled" : "") + ">Laat de eerste nacht vallen</button></section>";
+    return h;
+  }
+
+  /* --- nacht --- */
+
+  function pendingHtml() {
+    const it = S.pending[0];
+    if (!it) return "";
+    const p = P(it.id);
+    let h = '<article class="card alert"><p class="eyebrow">Eerst afhandelen</p>';
+    if (it.type === "reveal") {
+      const opts = ORDER.filter(r => missing(r) > 0);
+      const use = opts.length ? opts : ORDER;
+      h += "<h2>Welke kaart had " + esc(p.name) + "?</h2><p>" + esc(p.name) + " is " + CAUSE[it.cause] + ". Draai de kaart om en leg de rol vast.</p>" +
+        '<select id="pend-role" aria-label="Rol van ' + esc(p.name) + '">' + use.map(r => '<option value="' + r + '">' + ROLES[r].name + "</option>").join("") + "</select>" +
+        '<div class="btns"><button type="button" class="btn primary" data-action="pend-reveal">Vastleggen</button></div>';
+    } else if (it.type === "jager") {
+      const sel = picks("shoot");
+      h += "<h2>De Jager schiet</h2><p>" + esc(p.name) + " was de Jager en schiet direct iemand neer.</p>" + picker("shoot", 1, living()) +
+        '<div class="btns"><button type="button" class="btn primary" data-action="pend-shoot"' + (sel.length ? "" : " disabled") + ">Schieten</button>" +
+        '<button type="button" class="btn quiet" data-action="pend-skip">Schiet niemand</button></div>';
+    } else if (it.type === "burgemeester") {
+      const sel = picks("succ");
+      h += "<h2>Nieuwe burgemeester</h2><p>" + esc(p.name) + " was burgemeester en wijst een opvolger aan.</p>" + picker("succ", 1, living()) +
+        '<div class="btns"><button type="button" class="btn primary" data-action="pend-mayor"' + (sel.length ? "" : " disabled") + ">Benoemen</button>" +
+        '<button type="button" class="btn quiet" data-action="pend-skip">Geen opvolger</button></div>';
+    }
+    return h + "</article>";
+  }
+
+  function winHtml() {
+    const w = winner();
+    if (!w || S.dismissed === w.key) return "";
+    return '<article class="card win"><p class="eyebrow">Het spel is beslist</p><h2>' + esc(w.text) + "</h2>" +
+      '<div class="btns"><button type="button" class="btn primary" data-action="win-end">Spel beëindigen</button>' +
+      '<button type="button" class="btn quiet" data-action="win-continue">Toch doorspelen</button></div></article>';
+  }
+
+  function whoLine(s) {
+    if (!s.role) return "";
+    const roles = s.id === "weerwolven" ? ["weerwolf", "wittewolf"] : [s.role];
+    const hs = S.players.filter(p => roles.includes(p.role));
+    const al = hs.filter(p => p.alive).map(p => p.name);
+    const miss = roles.reduce((a, r) => a + missing(r), 0);
+    let t = al.length ? "Wie: " + list(al) : "";
+    if (miss > 0 && !s.dead) t += (t ? " · " : "") + miss + " nog niet vastgelegd";
+    return t ? '<p class="muted small">' + esc(t) + "</p>" : "";
+  }
+
+  function identifyHtml(s) {
+    if (!s.role || s.dead) return "";
+    const roles = s.id === "weerwolven" ? ["weerwolf", "wittewolf"] : [s.role];
+    const r = roles.find(x => missing(x) > 0);
+    const cands = unknownAlive();
+    if (!r || !cands.length) return "";
+    const need = Math.min(missing(r), cands.length);
+    const sel = picks("id");
+    return '<div class="stack"><h3>Wie ' + (need > 1 ? "worden" : "wordt") + " er wakker als " + ROLES[r].name + (need > 1 ? " (" + need + ")" : "") + "?</h3>" +
+      picker("id", need, cands) +
+      '<div class="btns"><button type="button" class="btn" data-action="identify" data-role="' + r + '"' + (sel.length ? "" : " disabled") + ">Vastleggen als " + ROLES[r].name + "</button></div></div>";
+  }
+
+  function stepBody(s) {
+    const n = S.night;
+    const next = (label, cls) => '<button type="button" class="btn ' + (cls || "quiet") + '" data-action="step-next" data-step="' + s.id + '">' + (label || "Overslaan") + "</button>";
+    if (s.dead) {
+      return '<p class="note warn">Deze rol is dood. Roep hem toch af en wacht een paar tellen, zodat niemand iets merkt.</p><div class="btns">' + next("Volgende", "primary") + "</div>";
+    }
+    const L = living();
+    switch (s.id) {
+      case "dief": {
+        const thief = holders("dief").find(p => p.alive);
+        if (!thief) return '<div class="btns">' + next() + "</div>";
+        return '<label class="stack"><span class="small">Nieuwe rol van ' + esc(thief.name) + '</span><select id="dief-role">' + ORDER.filter(r => r !== "dief").map(r => '<option value="' + r + '">' + ROLES[r].name + "</option>").join("") + "</select></label>" +
+          '<div class="btns"><button type="button" class="btn primary" data-action="dief-swap">Ruilen</button>' + next("Niet ruilen") + "</div>";
+      }
+      case "cupido": {
+        const sel = picks("act");
+        return picker("act", 2, L) + '<div class="btns"><button type="button" class="btn primary" data-action="cupido"' + (sel.length === 2 ? "" : " disabled") + ">Maak ze geliefden</button>" + next() + "</div>";
+      }
+      case "geliefden": {
+        const lv = S.players.filter(p => p.lover).map(p => p.name);
+        return "<p>Tik " + esc(list(lv)) + " aan.</p><div class=\"btns\">" + next("Volgende", "primary") + "</div>";
+      }
+      case "zussen": {
+        const z = holders("zus").map(p => p.name);
+        return (z.length ? "<p>De zussen: " + esc(list(z)) + ".</p>" : "") + '<div class="btns">' + next("Volgende", "primary") + "</div>";
+      }
+      case "wildkind": {
+        const sel = picks("act");
+        const kids = holders("wildkind").map(p => p.id);
+        return picker("act", 1, L.filter(p => !kids.includes(p.id))) +
+          '<div class="btns"><button type="button" class="btn primary" data-action="wild"' + (sel.length ? "" : " disabled") + ">Voorbeeld vastleggen</button>" + next() + "</div>";
+      }
+      case "beschermer": {
+        const sel = picks("act");
+        const last = S.lastProtected && P(S.lastProtected);
+        return (last ? '<p class="note">Vorige nacht beschermd: ' + esc(last.name) + ". Die mag nu niet.</p>" : "") +
+          picker("act", 1, L.filter(p => p.id !== S.lastProtected)) +
+          '<div class="btns"><button type="button" class="btn primary" data-action="protect"' + (sel.length ? "" : " disabled") + ">Beschermen</button>" + next("Niemand beschermen") + "</div>";
+      }
+      case "ziener": {
+        if (n.seen) {
+          const p = P(n.seen);
+          let h = '<div class="stack"><h3>' + esc(p.name) + ' is</h3><p class="big-reveal">' + esc(p.role ? ROLES[p.role].name : "Nog onbekend") + "</p>";
+          if (!p.role) h += '<p class="note">Kijk mee naar de kaart en leg de rol vast.</p><div class="addrow"><select id="seer-role" aria-label="Rol van ' + esc(p.name) + '">' + roleOptions("", false) + '</select><button type="button" class="btn" data-action="seer-record">Vastleggen</button></div>';
+          return h + '</div><div class="btns">' + next("Volgende", "primary") + "</div>";
+        }
+        const sel = picks("act");
+        const seers = holders("ziener").map(p => p.id);
+        return picker("act", 1, L.filter(p => !seers.includes(p.id))) +
+          '<div class="btns"><button type="button" class="btn primary" data-action="see"' + (sel.length ? "" : " disabled") + ">Kaart bekijken</button>" + next() + "</div>";
+      }
+      case "weerwolven": {
+        const sel = picks("act");
+        let h = "";
+        if (S.round === 1) h += '<p class="note">Eerste nacht: laat de weerwolven elkaar eerst herkennen.</p>';
+        if (roleStatus("meisje") === "alive") h += '<p class="note">Het Klein meisje mag nu gluren. Let op of de weerwolven haar betrappen.</p>';
+        if (holders("weerwolf").some(p => p.orig === "wildkind" && p.alive)) h += '<p class="note">Vergeet het wilde kind niet: dat is nu ook een weerwolf.</p>';
+        return h + picker("act", 1, L.filter(p => !isWolf(p))) +
+          '<div class="btns"><button type="button" class="btn primary" data-action="wolves"' + (sel.length ? "" : " disabled") + ">Slachtoffer vastleggen</button>" + next("Geen slachtoffer") + "</div>";
+      }
+      case "wittewolf": {
+        const sel = picks("act");
+        return '<p class="note">Alleen op even nachten. De Witte weerwolf mag een andere weerwolf doden.</p>' +
+          picker("act", 1, L.filter(p => p.role === "weerwolf")) +
+          '<div class="btns"><button type="button" class="btn primary" data-action="white"' + (sel.length ? "" : " disabled") + ">Doden</button>" + next("Niemand doden") + "</div>";
+      }
+      case "heks": {
+        const t = n.wolfTarget && P(n.wolfTarget);
+        let h = "<p>" + (t ? "Slachtoffer van de weerwolven: <strong>" + esc(t.name) + "</strong>" + (n.protect === t.id ? " <span class=\"tag good\">beschermd</span>" : "") : "De weerwolven hebben niemand gekozen.") + "</p>";
+        h += '<div class="facts"><div class="fact"><h3>Levensdrank</h3><p>' + (n.healed ? "Gebruikt op " + esc(t.name) : S.witch.heal ? "Nog beschikbaar" : "Op") + '</p></div><div class="fact"><h3>Gifdrank</h3><p>' + (n.poison ? "Gegeven aan " + esc(nameOf(n.poison)) : S.witch.poison ? "Nog beschikbaar" : "Op") + "</p></div></div>";
+        if (S.witch.heal && t && !n.healed) h += '<div class="btns"><button type="button" class="btn" data-action="heal">Levensdrank op ' + esc(t.name) + "</button></div>";
+        if (S.witch.poison && !n.poison) {
+          const sel = picks("act");
+          h += '<div class="stack"><h3>Gifdrank geven aan</h3>' + picker("act", 1, L.filter(p => p.role !== "heks")) +
+            '<div class="btns"><button type="button" class="btn danger" data-action="poison"' + (sel.length ? "" : " disabled") + ">Vergiftigen</button></div></div>";
+        }
+        return h + '<div class="btns">' + next("Klaar met de Heks", "primary") + "</div>";
+      }
+      case "raaf": {
+        const sel = picks("act");
+        return picker("act", 1, L) + '<div class="btns"><button type="button" class="btn primary" data-action="raven"' + (sel.length ? "" : " disabled") + ">Markeren</button>" + next("Niemand") + "</div>";
+      }
+      case "fluitspeler": {
+        const sel = picks("act");
+        const cands = L.filter(p => !p.charmed && p.role !== "fluitspeler");
+        const need = Math.min(2, cands.length);
+        return picker("act", 2, cands) + '<div class="btns"><button type="button" class="btn primary" data-action="charm"' + (sel.length === need && need ? "" : " disabled") + ">Betoveren</button>" + next() + "</div>";
+      }
+      case "betoverden": {
+        const c = living().filter(p => p.charmed).map(p => p.name);
+        return "<p>Tik aan: " + esc(list(c)) + ".</p><div class=\"btns\">" + next("Volgende", "primary") + "</div>";
+      }
+      case "dageraad": {
+        const items = [];
+        if (n.protect) items.push("Beschermd: " + nameOf(n.protect));
+        items.push("Weerwolven kozen: " + (n.wolfTarget ? nameOf(n.wolfTarget) : "niemand"));
+        if (n.healed) items.push("Heks redde " + nameOf(n.wolfTarget));
+        if (n.whiteKill) items.push("Witte weerwolf doodde " + nameOf(n.whiteKill));
+        if (n.poison) items.push("Heks vergiftigde " + nameOf(n.poison));
+        if (n.raven) items.push("Raaf markeerde " + nameOf(n.raven));
+        return '<div class="stack"><h3>Wat er vannacht gebeurde</h3><ul>' + items.map(i => "<li>" + esc(i) + "</li>").join("") + "</ul></div>" +
+          '<button type="button" class="btn primary full" data-action="dawn">Laat het dorp ontwaken</button>';
+      }
+    }
+    return '<div class="btns">' + next("Volgende", "primary") + "</div>";
+  }
+
+  function renderNight() {
+    const pend = pendingHtml();
+    if (pend) return '<div class="stack" style="margin-top:16px">' + pend + "</div>";
+    const steps = stepList();
+    const cur = steps.find(s => !S.night.done.includes(s.id)) || steps[steps.length - 1];
+    const key = S.round + ":" + cur.id;
+    if (ui.pickKey !== key) { ui.pickKey = key; ui.picks = {}; }
+    const idx = steps.indexOf(cur);
+    let h = '<ol class="order" aria-label="Volgorde van deze nacht">' + steps.map((s, i) =>
+      '<li class="' + (S.night.done.includes(s.id) ? "done" : s === cur ? "now" : "") + (s.dead ? " dead" : "") + '"' + (s === cur ? ' aria-current="step"' : "") + "><span><b>" + (i + 1) + "</b></span>" + esc(s.title.replace(/^De /, "")) + "</li>"
+    ).join("") + "</ol>";
+    let script = cur.script;
+    if (cur.id === "weerwolven" && S.round === 1) script = "Weerwolven, word wakker en kijk wie de andere weerwolven zijn. Kies samen een slachtoffer. Sluit je ogen weer.";
+    if (cur.id === "dageraad") script = "Iedereen gaat slapen… De nacht is voorbij. De zon komt op en het dorp wordt wakker.";
+    h += '<div class="stack" style="margin-top:16px">' + winHtml() +
+      '<article class="card"><div><p class="eyebrow">Stap ' + (idx + 1) + " van " + steps.length + "</p><h2>" + esc(cur.title) + "</h2>" + whoLine(cur) + "</div>" +
+      '<div class="script"><span class="label">Voorlezen</span><p>' + esc(script) + "</p></div>" +
+      identifyHtml(cur) + stepBody(cur) + "</article></div>";
+    if (S.round === 1 && cur.id !== "dageraad" && idx === 0) h += '<p class="note" style="margin-top:12px">Begin met: “Het wordt nacht in Wakkerdam. Iedereen sluit de ogen.”</p>';
+    return h;
+  }
+
+  /* --- dag --- */
+
+  function renderDay() {
+    const d = S.day;
+    let h = '<div class="stack" style="margin-top:16px">';
+    const deaths = S.recent;
+    h += '<article class="card"><p class="eyebrow">Sinds het ochtendgloren</p>';
+    if (!deaths.length) h += "<h2>Niemand is gestorven</h2><div class=\"script\"><span class=\"label\">Voorlezen</span><p>Het dorp wordt wakker. Vannacht is er niemand gestorven.</p></div>";
+    else {
+      const nightDeaths = deaths.filter(x => ["weerwolven", "wittewolf", "gif", "liefde"].includes(x.cause));
+      const dead = deaths.filter(x => x.cause !== "dorpsgek").length;
+      h += "<h2>" + (dead === 0 ? "Niemand is gestorven" : dead === 1 ? "Eén dode" : dead + " doden") + "</h2>";
+      if (nightDeaths.length) h += '<div class="script"><span class="label">Voorlezen</span><p>Het dorp wordt wakker, behalve ' + esc(list(nightDeaths.map(x => nameOf(x.id)))) + ".</p></div>";
+      h += '<ul class="rows">' + deaths.map(x => {
+        const p = P(x.id);
+        return '<li class="' + (p.alive ? "" : "dead") + '"><div class="grow"><span class="pname">' + esc(p.name) + '</span><p class="note">' + esc(roleLabel(p)) + " · " + esc(x.cause === "dorpsgek" ? "weggestemd, maar blijft leven als Dorpsgek" : CAUSE[x.cause]) + "</p></div></li>";
+      }).join("") + "</ul>";
+    }
+    h += "</article>";
+    const pend = pendingHtml();
+    if (pend) return h + pend + "</div>";
+    h += winHtml();
+
+    const L = living();
+    if (S.opts.mayor && !d.voted && !d.electionDone && !L.some(p => p.mayor) && !S.players.some(p => p.mayor)) {
+      const sel = picks("elect");
+      h += '<article class="card"><p class="eyebrow">Verkiezing</p><h2>Kies een burgemeester</h2><p class="note">De stem van de burgemeester telt dubbel bij een gelijke stand.</p>' + picker("elect", 1, L) +
+        '<div class="btns"><button type="button" class="btn primary" data-action="elect"' + (sel.length ? "" : " disabled") + '>Benoemen</button><button type="button" class="btn quiet" data-action="elect-skip">Overslaan</button></div></article>';
+    }
+
+    if (!d.voted) {
+      const counts = L.map(p => d.votes[p.id] || 0);
+      const max = Math.max(0, ...counts);
+      const top = L.filter(p => max > 0 && (d.votes[p.id] || 0) === max);
+      h += '<article class="card vote"><p class="eyebrow">Stemming</p><h2>Wie wordt er weggestemd?</h2>';
+      if (d.raven && P(d.raven).alive) h += '<p class="note">De Raaf heeft ' + esc(nameOf(d.raven)) + " gemarkeerd: al 2 stemmen tegen.</p>";
+      h += '<p class="note">Tel de stemmen met + en −, of tik direct op een naam.</p>';
+      h += '<ul class="rows">' + L.map(p =>
+        '<li class="' + (ui.voteSel === p.id ? "on" : "") + '"><button type="button" class="vname" data-action="vote-sel" data-id="' + p.id + '"><span class="pname">' + esc(p.name) + "</span>" + playerTags(p) + "</button>" +
+        '<div class="ctr stepper"><button type="button" data-action="vote" data-id="' + p.id + '" data-delta="-1" aria-label="Stem minder voor ' + esc(p.name) + '">−</button><output>' + (d.votes[p.id] || 0) + '</output><button type="button" data-action="vote" data-id="' + p.id + '" data-delta="1" aria-label="Stem meer voor ' + esc(p.name) + '">+</button></div></li>'
+      ).join("") + "</ul>";
+      if (top.length > 1) {
+        h += '<p class="note warn">Gelijke stand tussen ' + esc(list(top.map(p => p.name))) + ".";
+        if (roleStatus("zondebok") === "alive") h += " De Zondebok doet mee: bij gelijke stand sterft de Zondebok.";
+        else if (L.some(p => p.mayor)) h += " De burgemeester beslist.";
+        h += "</p>";
+      }
+      const pick = ui.voteSel ? P(ui.voteSel) : top.length === 1 ? top[0] : null;
+      h += '<div class="btns">' + (pick ? '<button type="button" class="btn danger" data-action="vote-out" data-id="' + pick.id + '">' + esc(pick.name) + " wegstemmen</button>" : "") +
+        '<button type="button" class="btn quiet" data-action="vote-none">Niemand wegstemmen</button></div></article>';
+    } else {
+      h += '<article class="card"><p class="eyebrow">Stemming</p><h2>' + (d.out ? esc(nameOf(d.out)) + " is weggestemd" : "Niemand is weggestemd") + "</h2>" +
+        '<button type="button" class="btn primary full" data-action="dusk">Laat de nacht vallen</button></article>';
+    }
+    return h + "</div>";
+  }
+
+  function renderEnd() {
+    const w = winner();
+    return '<div class="stack" style="margin-top:16px"><article class="card"><p class="eyebrow">Afgelopen na ' + S.round + " rondes</p><h2>" + esc(S.endText || (w ? w.text : "Het spel is beëindigd.")) + "</h2>" +
+      '<p class="note">Bekijk het logboek voor het hele verloop.</p>' + newGameHtml() + "</article>" + playersTable(true) + "</div>";
+  }
+
+  function newGameHtml() {
+    if (!ui.confirmNew) return '<div class="btns"><button type="button" class="btn" data-action="new-game">Nieuw spel</button></div>';
+    return '<div class="stack"><p>Het huidige spel wordt gewist. Hoe wil je beginnen?</p><div class="btns">' +
+      '<button type="button" class="btn primary" data-action="new-same">Zelfde spelers</button>' +
+      '<button type="button" class="btn danger" data-action="new-fresh">Helemaal opnieuw</button>' +
+      '<button type="button" class="btn quiet" data-action="new-cancel">Annuleren</button></div></div>';
+  }
+
+  /* --- spelers --- */
+
+  function playersTable(readonly) {
+    return '<ol class="rows">' + S.players.map((p, i) =>
+      '<li class="' + (p.alive ? "" : "dead") + '"><span class="num">' + (i + 1) + '</span><div class="grow"><span class="pname">' + esc(p.name) + "</span> " +
+      (readonly || S.phase === "setup" ? '<span class="muted small">' + esc(roleLabel(p)) + "</span>" : "") + "<div>" + playerTags(p) + "</div></div>" +
+      (readonly || S.phase === "setup" ? "" :
+        '<select id="prole-' + p.id + '" aria-label="Rol van ' + esc(p.name) + '" data-change="setrole" data-id="' + p.id + '">' + roleOptions(p.role, true) + "</select>" +
+        (p.alive
+          ? '<button type="button" class="btn sm danger" data-action="p-kill" data-id="' + p.id + '">Dood</button>'
+          : '<button type="button" class="btn sm" data-action="p-revive" data-id="' + p.id + '">Leeft weer</button>')) +
+      "</li>"
+    ).join("") + "</ol>";
+  }
+
+  function renderPlayers() {
+    const L = living();
+    const lovers = S.players.filter(p => p.lover);
+    const charmed = L.filter(p => p.charmed);
+    const facts = [];
+    if (S.phase !== "setup") {
+      const wolves = L.filter(isWolf).length;
+      facts.push(["In leven", L.length + " spelers · " + wolves + " weerwolf" + (wolves === 1 ? "" : "ven") + (unknownAlive().length ? " · " + unknownAlive().length + " onbekend" : "")]);
+      if (roleStatus("heks") !== "none") facts.push(["Heks", "Levensdrank " + (S.witch.heal ? "nog over" : "op") + " · gifdrank " + (S.witch.poison ? "nog over" : "op")]);
+      if (roleStatus("beschermer") !== "none") facts.push(["Beschermer", S.lastProtected ? "Mag vannacht niet: " + nameOf(S.lastProtected) : "Nog niemand beschermd"]);
+      if (lovers.length) facts.push(["Geliefden", list(lovers.map(p => p.name))]);
+      if (S.wildModel) facts.push(["Voorbeeld wild kind", nameOf(S.wildModel)]);
+      if (charmed.length) facts.push(["Betoverd", list(charmed.map(p => p.name))]);
+      const mayor = L.find(p => p.mayor);
+      if (mayor) facts.push(["Burgemeester", mayor.name]);
+    }
+    let h = '<section class="block"><h2>Wat je moet onthouden</h2>';
+    h += facts.length ? '<div class="facts">' + facts.map(f => '<div class="fact"><h3>' + esc(f[0]) + "</h3><p>" + esc(f[1]) + "</p></div>").join("") + "</div>"
+      : '<p class="note">Zodra het spel begint, zie je hier de drankjes van de Heks, de geliefden, de betoverden en meer.</p>';
+    h += "</section>";
+    h += '<section class="block"><div><h2>Spelers</h2><p class="note">' + (S.phase === "setup" ? "Namen en rollen pas je aan onder Spel." : "Vergissing gemaakt? Pas hier een rol aan of zet iemand op dood.") + "</p></div>" + playersTable(S.phase === "end") + "</section>";
+    h += '<section class="block"><h2>Spel</h2>' + newGameHtml() + "</section>";
+    return h;
+  }
+
+  /* --- logboek --- */
+
+  function renderLog() {
+    if (!S.log.length) return '<section class="block"><h2>Logboek</h2><p class="note">Hier komt alles te staan wat er in het spel gebeurt, per ronde.</p></section>';
+    const groups = [];
+    for (const e of S.log) {
+      const label = e.ph === "setup" ? "Voorbereiding" : (e.ph === "day" ? "Dag " : "Nacht ") + e.r;
+      let g = groups[groups.length - 1];
+      if (!g || g.label !== label) { g = { label, items: [] }; groups.push(g); }
+      g.items.push(e.t);
+    }
+    return '<section class="block"><h2>Logboek</h2>' + groups.reverse().map(g =>
+      '<div class="log-round"><h3>' + esc(g.label) + "</h3><ul>" + g.items.map(t => "<li>" + esc(t) + "</li>").join("") + "</ul></div>"
+    ).join("") + "</section>";
+  }
+
+  /* --- rolkaarten doorgeven --- */
+
+  function renderOverlay() {
+    const o = document.getElementById("overlay");
+    if (!ui.reveal) { o.hidden = true; o.innerHTML = ""; return; }
+    const p = S.players[ui.reveal.i];
+    if (!p) { ui.reveal = null; o.hidden = true; return; }
+    o.hidden = false;
+    let h = '<div class="card"><p class="eyebrow">Speler ' + (ui.reveal.i + 1) + " van " + S.players.length + "</p>";
+    if (!ui.reveal.shown) {
+      h += "<h2>Geef de telefoon aan " + esc(p.name) + '</h2><p class="note">Alleen ' + esc(p.name) + " mag kijken.</p>" +
+        '<button type="button" class="btn primary full" data-action="reveal-show">Toon mijn rol</button>';
+    } else {
+      h += "<p>" + esc(p.name) + ', jij bent</p><p class="big-reveal">' + esc(ROLES[p.role].name) + '</p><p class="note">' + esc(ROLES[p.role].desc) + "</p>" +
+        '<button type="button" class="btn primary full" data-action="reveal-next">Verbergen en doorgeven</button>';
+    }
+    h += '<button type="button" class="btn quiet sm" data-action="reveal-close">Stoppen</button></div>';
+    o.innerHTML = h;
+  }
+
+  /* ---------- acties ---------- */
+
+  function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+  function addPlayer() {
+    const inp = document.getElementById("new-name");
+    const name = inp.value.trim();
+    if (!name) { inp.focus(); return; }
+    act(() => {
+      if (S.sample) S.sample = false;
+      S.players.push(mkPlayer(S.nextId++, name));
+    });
+    const again = document.getElementById("new-name");
+    if (again) again.focus();
+  }
+
+  let wakeLock = null;
+  function keepAwake() {
+    try {
+      if (navigator.wakeLock && !wakeLock) navigator.wakeLock.request("screen").then(l => { wakeLock = l; l.addEventListener("release", () => (wakeLock = null)); }).catch(() => {});
+    } catch (e) { /* niet ondersteund */ }
+  }
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && S.phase !== "setup" && S.phase !== "end") keepAwake(); });
+
+  const H = {
+    tab: d => { ui.tab = d.tab; ui.confirmNew = false; render(); window.scrollTo(0, 0); },
+    undo: () => undo(),
+    pick: d => {
+      const ns = d.ns, id = +d.id, max = +d.max;
+      let a = picks(ns);
+      if (max === 1) a = a[0] === id ? [] : [id];
+      else a = a.includes(id) ? a.filter(x => x !== id) : a.length < max ? a.concat(id) : a;
+      ui.picks[ns] = a;
+      render();
+    },
+
+    "add-player": () => addPlayer(),
+    "remove-player": d => act(() => { S.sample = false; S.players = S.players.filter(p => p.id !== +d.id); }),
+    deck: d => act(() => { S.deck[d.role] = Math.max(0, (S.deck[d.role] || 0) + +d.delta); }),
+    deal: () => act(() => {
+      const cards = shuffle(ORDER.flatMap(r => Array(S.deck[r] || 0).fill(r)));
+      S.players.forEach((p, i) => (p.role = cards[i] || null));
+      log("De rollen zijn willekeurig verdeeld.");
+    }),
+    "clear-roles": () => act(() => S.players.forEach(p => (p.role = null))),
+    "show-roles": () => { ui.reveal = { i: 0, shown: false }; render(); },
+    "reveal-show": () => { ui.reveal.shown = true; render(); },
+    "reveal-next": () => { ui.reveal = { i: ui.reveal.i + 1, shown: false }; if (ui.reveal.i >= S.players.length) ui.reveal = null; render(); },
+    "reveal-close": () => { ui.reveal = null; render(); },
+    start: () => {
+      if (setupProblems().length) return;
+      act(() => {
+        S.sample = false;
+        S.phase = "night"; S.round = 1;
+        const inPlay = ORDER.filter(r => S.deck[r] > 0).map(r => S.deck[r] + "× " + ROLES[r].name);
+        log("Het spel begint met " + S.players.length + " spelers: " + inPlay.join(", ") + ".");
+        log("Nacht 1 begint.");
+      });
+      ui.tab = "spel";
+      keepAwake();
+      window.scrollTo(0, 0);
+    },
+
+    identify: d => {
+      const ids = picks("id");
+      act(() => {
+        ids.forEach(id => (P(id).role = d.role));
+        log(list(ids.map(nameOf)) + (ids.length > 1 ? " zijn " : " is ") + ROLES[d.role].name + ".");
+      });
+      ui.picks.id = [];
+      render();
+    },
+    "step-next": d => act(() => done(d.step)),
+    "dief-swap": () => {
+      const r = document.getElementById("dief-role").value;
+      act(() => {
+        const thief = holders("dief").find(p => p.alive);
+        thief.orig = "dief"; thief.role = r;
+        S.deck.dief = Math.max(0, S.deck.dief - 1); S.deck[r] = (S.deck[r] || 0) + 1;
+        log(thief.name + " (Dief) ruilt en is nu " + ROLES[r].name + ".");
+        done("dief");
+      });
+    },
+    cupido: () => act(() => {
+      const ids = picks("act");
+      ids.forEach(id => (P(id).lover = true));
+      log("Cupido maakt " + list(ids.map(nameOf)) + " verliefd.");
+      done("cupido");
+    }),
+    wild: () => act(() => { S.wildModel = picks("act")[0]; log("Het wilde kind kiest " + nameOf(S.wildModel) + " als voorbeeld."); done("wildkind"); }),
+    protect: () => act(() => { S.night.protect = picks("act")[0]; log("De Beschermer beschermt " + nameOf(S.night.protect) + "."); done("beschermer"); }),
+    see: () => act(() => {
+      const p = P(picks("act")[0]);
+      S.night.seen = p.id;
+      log("De Ziener bekijkt " + p.name + ": " + (p.role ? ROLES[p.role].name : "rol nog onbekend") + ".");
+    }),
+    "seer-record": () => {
+      const r = document.getElementById("seer-role").value;
+      act(() => { const p = P(S.night.seen); p.role = r; log(p.name + " is " + ROLES[r].name + "."); });
+    },
+    wolves: () => act(() => { S.night.wolfTarget = picks("act")[0]; log("De weerwolven kiezen " + nameOf(S.night.wolfTarget) + "."); done("weerwolven"); }),
+    white: () => act(() => { S.night.whiteKill = picks("act")[0]; log("De Witte weerwolf kiest " + nameOf(S.night.whiteKill) + "."); done("wittewolf"); }),
+    heal: () => act(() => { S.witch.heal = false; S.night.healed = true; log("De Heks gebruikt haar levensdrank op " + nameOf(S.night.wolfTarget) + "."); }),
+    poison: () => act(() => { S.witch.poison = false; S.night.poison = picks("act")[0]; log("De Heks geeft haar gifdrank aan " + nameOf(S.night.poison) + "."); }),
+    raven: () => act(() => { S.night.raven = picks("act")[0]; log("De Raaf markeert " + nameOf(S.night.raven) + "."); done("raaf"); }),
+    charm: () => act(() => {
+      const ids = picks("act");
+      ids.forEach(id => (P(id).charmed = true));
+      log("De Fluitspeler betovert " + list(ids.map(nameOf)) + ".");
+      done("fluitspeler");
+    }),
+    dawn: () => { act(() => resolveNight()); window.scrollTo(0, 0); },
+
+    "pend-reveal": () => {
+      const r = document.getElementById("pend-role").value;
+      act(() => {
+        const it = S.pending.shift();
+        const p = P(it.id);
+        p.role = r;
+        finishKill(p, it.cause);
+      });
+    },
+    "pend-shoot": () => act(() => { S.pending.shift(); killPlayer(picks("shoot")[0], "jager"); }),
+    "pend-mayor": () => act(() => {
+      S.pending.shift();
+      const p = P(picks("succ")[0]);
+      p.mayor = true;
+      log(p.name + " is de nieuwe burgemeester.");
+    }),
+    "pend-skip": () => act(() => { const it = S.pending.shift(); if (it.type === "jager") log("De Jager schiet niemand neer."); }),
+
+    elect: () => act(() => { const p = P(picks("elect")[0]); p.mayor = true; S.day.electionDone = true; log(p.name + " is gekozen tot burgemeester."); }),
+    "elect-skip": () => act(() => { S.day.electionDone = true; }),
+    vote: d => act(() => { const id = +d.id; S.day.votes[id] = Math.max(0, (S.day.votes[id] || 0) + +d.delta); }),
+    "vote-sel": d => { ui.voteSel = ui.voteSel === +d.id ? null : +d.id; render(); },
+    "vote-out": d => {
+      act(() => {
+        const id = +d.id;
+        S.day.voted = true; S.day.out = id;
+        killPlayer(id, "stem");
+      });
+      ui.voteSel = null; render();
+    },
+    "vote-none": () => act(() => { S.day.voted = true; S.day.out = null; log("Het dorp stemt niemand weg."); }),
+    dusk: () => { act(() => startNight()); window.scrollTo(0, 0); },
+
+    "win-end": () => act(() => { const w = winner(); S.endText = w ? w.text : ""; S.phase = "end"; log(w ? w.text : "Het spel is beëindigd."); }),
+    "win-continue": () => act(() => { S.dismissed = winner().key; }),
+
+    "p-kill": d => act(() => killPlayer(+d.id, "spelleider")),
+    "p-revive": d => act(() => { const p = P(+d.id); p.alive = true; log(p.name + " is door de spelleider weer tot leven gebracht."); }),
+
+    "new-game": () => { ui.confirmNew = true; render(); },
+    "new-cancel": () => { ui.confirmNew = false; render(); },
+    "new-same": () => act(() => {
+      const names = S.players.map(p => p.name), deck = S.deck, opts = S.opts;
+      S = newState(names, false); S.deck = deck; S.opts = opts;
+      ui.confirmNew = false; ui.tab = "spel";
+    }),
+    "new-fresh": () => act(() => { S = newState([], false); S.deck = emptyDeck(); ui.confirmNew = false; ui.tab = "spel"; })
+  };
+
+  const CH = {
+    rename: (el, d) => {
+      // Geen nieuwe weergave: dan blijft een klik op een andere knop gewoon werken.
+      const p = P(+d.id);
+      if (!p) return;
+      hist.push(JSON.stringify(S));
+      p.name = el.value.trim() || p.name;
+      el.value = p.name;
+      S.sample = false;
+      persist();
+      document.getElementById("undo-btn").disabled = false;
+    },
+    setrole: (el, d) => act(() => {
+      const p = P(+d.id);
+      p.role = el.value || null;
+      if (S.phase !== "setup") log("Spelleider zet de rol van " + p.name + " op " + (p.role ? ROLES[p.role].name : "onbekend") + ".");
+    }),
+    opt: (el, d) => act(() => { S.opts[d.key] = el.checked; })
+  };
+
+  document.addEventListener("click", e => {
+    const b = e.target.closest("[data-action]");
+    if (!b || b.disabled) return;
+    const fn = H[b.dataset.action];
+    if (fn) fn(b.dataset, b);
+  });
+  document.addEventListener("change", e => {
+    const el = e.target.closest("[data-change]");
+    if (!el) return;
+    const fn = CH[el.dataset.change];
+    if (fn) fn(el, el.dataset);
+  });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Enter" && e.target.id === "new-name") { e.preventDefault(); addPlayer(); }
+  });
+
+  render();
+  if (S.phase === "night" || S.phase === "day") keepAwake();
+})();
+</script>
+</body>
+</html>
