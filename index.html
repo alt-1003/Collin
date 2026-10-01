@@ -184,6 +184,11 @@ input[type="text"] { width: 100%; }
 /* Rolkaart doorgeven */
 .overlay { position: fixed; inset: 0; z-index: 20; background: var(--bg); display: grid; place-items: center; padding: 24px 16px; padding-top: calc(24px + env(safe-area-inset-top, 0px)); padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
 .overlay .card { width: 100%; max-width: 420px; text-align: center; align-items: center; }
+.setgroup { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); overflow: hidden; }
+.sethead { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; background: none; border: 0; cursor: pointer; text-align: left; }
+.sethead .pname { font-size: 1.05rem; }
+.sethead .chev { color: var(--muted); font-size: .85rem; white-space: nowrap; }
+.setgroup .rows { border: 0; border-radius: 0; border-top: 1px solid var(--line); }
 </style>
 </head>
 <body>
@@ -214,33 +219,70 @@ input[type="text"] { width: 100%; }
 
   const KEY = "wakkerdam-spelleider-v1";
 
+  const SETS = {
+    basis: "Basisspel",
+    vollemaan: "Volle Maan",
+    karakters: "Karakters",
+    dorp: "Het Dorp",
+    jubileum: "Jubileumeditie (25 jaar)"
+  };
+
   const ROLES = {
-    weerwolf:    { name: "Weerwolf",       team: "wolf", desc: "Kiest elke nacht samen met de andere weerwolven een slachtoffer." },
-    burger:      { name: "Burger",         team: "dorp", desc: "Geen speciale kracht. Stemt overdag mee." },
-    ziener:      { name: "Ziener",         team: "dorp", desc: "Bekijkt elke nacht de kaart van één speler." },
-    heks:        { name: "Heks",           team: "dorp", desc: "Heeft één levensdrank en één gifdrank voor het hele spel." },
-    jager:       { name: "Jager",          team: "dorp", desc: "Schiet bij zijn dood direct iemand neer." },
-    cupido:      { name: "Cupido",         team: "dorp", desc: "Maakt in de eerste nacht twee spelers verliefd. Sterft de een, dan sterft de ander ook." },
-    meisje:      { name: "Klein meisje",   team: "dorp", desc: "Mag stiekem gluren als de weerwolven wakker zijn." },
-    beschermer:  { name: "Beschermer",     team: "dorp", desc: "Beschermt elke nacht één speler tegen de weerwolven, nooit twee nachten achter elkaar dezelfde." },
-    oudste:      { name: "Dorpsoudste",    team: "dorp", desc: "Overleeft de eerste aanval van de weerwolven." },
-    dorpsgek:    { name: "Dorpsgek",       team: "dorp", desc: "Wordt hij weggestemd, dan blijft hij leven maar verliest hij zijn stemrecht." },
-    zondebok:    { name: "Zondebok",       team: "dorp", desc: "Sterft bij een gelijke stand in plaats van de anderen." },
-    raaf:        { name: "Raaf",           team: "dorp", desc: "Geeft elke nacht één speler twee extra stemmen tegen zich." },
-    wildkind:    { name: "Wild kind",      team: "dorp", desc: "Kiest in de eerste nacht een voorbeeld. Sterft dat voorbeeld, dan wordt het kind een weerwolf." },
-    zus:         { name: "Zus",            team: "dorp", desc: "De twee zussen kennen elkaar en weten dus dat ze allebei burger zijn." },
-    dief:        { name: "Dief",           team: "dorp", desc: "Mag in de eerste nacht zijn kaart ruilen met een van de twee overgebleven kaarten." },
-    wittewolf:   { name: "Witte weerwolf", team: "solo", desc: "Wordt wakker met de weerwolven, maar mag om de nacht een weerwolf doden. Wint alleen." },
-    fluitspeler: { name: "Fluitspeler",    team: "solo", desc: "Betovert elke nacht twee spelers. Wint als iedereen die nog leeft betoverd is." }
+    // Basisspel
+    weerwolf:     { set: "basis", name: "Weerwolf", team: "wolf", desc: "Kiest elke nacht samen met de andere weerwolven een slachtoffer." },
+    burger:       { set: "basis", name: "Burger", team: "dorp", desc: "Geen speciale gave. Stemt overdag mee." },
+    ziener:       { set: "basis", name: "Ziener", team: "dorp", desc: "Bekijkt elke nacht de kaart van één speler." },
+    meisje:       { set: "basis", name: "Onschuldig meisje", team: "dorp", desc: "Mag gluren als de weerwolven wakker zijn. Wordt ze betrapt, dan sterft zij in plaats van het slachtoffer." },
+    jager:        { set: "basis", name: "Jager", team: "dorp", desc: "Schiet bij zijn dood direct iemand neer." },
+    cupido:       { set: "basis", name: "Cupido", team: "dorp", desc: "Maakt in de eerste nacht twee spelers verliefd. Sterft de een, dan sterft de ander ook." },
+    heks:         { set: "basis", name: "Heks", team: "dorp", desc: "Heeft één levenselixer en één gif voor het hele spel. Mag ze in dezelfde nacht gebruiken." },
+    dief:         { set: "basis", name: "Dief", team: "dorp", desc: "Mag in de eerste nacht zijn kaart ruilen met een van de twee overgebleven kaarten." },
+    // Volle Maan
+    dorpsgek:     { set: "vollemaan", name: "Dorpsgek", team: "dorp", desc: "Wordt hij weggestemd, dan blijft hij leven maar verliest hij zijn stemrecht." },
+    oudste:       { set: "vollemaan", name: "Dorpsoudste", team: "dorp", desc: "Overleeft de eerste aanval van de weerwolven. Doodt het dorp hem, dan verliezen alle burgers hun gaven." },
+    zondebok:     { set: "vollemaan", name: "Zondebok", team: "dorp", desc: "Sterft bij een gelijke stand en bepaalt dan wie er de volgende dag mag stemmen." },
+    beschermer:   { set: "vollemaan", name: "Genezer", team: "dorp", desc: "Beschermt elke nacht één speler tegen de weerwolven, nooit twee nachten achter elkaar dezelfde." },
+    fluitspeler:  { set: "vollemaan", name: "Fluitspeler", team: "solo", desc: "Betovert elke nacht twee spelers. Wint als iedereen die nog leeft betoverd is." },
+    // Karakters
+    dorpeling:    { set: "karakters", name: "Dorpse dorpeling", team: "dorp", desc: "Een gewone burger, en iedereen weet het: zijn kaart is aan beide kanten gelijk." },
+    zus:          { set: "karakters", name: "Gezuster", team: "dorp", desc: "De twee gezusters kennen elkaar en mogen af en toe 's nachts in stilte overleggen." },
+    broer:        { set: "karakters", name: "Gebroeder", team: "dorp", desc: "De drie gebroeders kennen elkaar en mogen af en toe 's nachts in stilte overleggen." },
+    engel:        { set: "karakters", name: "Engel", team: "solo", desc: "Wint meteen als hij in de eerste ronde sterft. Anders speelt hij als burger." },
+    raadsheer:    { set: "karakters", name: "Stotterende raadsheer", team: "dorp", desc: "Mag één keer per spel met een geheim teken een tweede stemming afdwingen." },
+    ridder:       { set: "karakters", name: "Ridder met het roestige zwaard", team: "dorp", desc: "Doden de weerwolven hem, dan sterft de eerste weerwolf links van hem de volgende nacht." },
+    toneelspeler: { set: "karakters", name: "Toneelspeler", team: "dorp", desc: "Kiest elke nacht een van de klaargelegde rollen en speelt die tot de volgende nacht. Elke rol maar één keer." },
+    dienstmeisje: { set: "karakters", name: "Toegewijde dienstmeisje", team: "dorp", desc: "Mag de rol overnemen van iemand die net is weggestemd, voordat zijn kaart wordt omgedraaid." },
+    vos:          { set: "karakters", name: "Vos", team: "dorp", desc: "Wijst elke nacht het midden van een groepje van drie aan. Zit er geen weerwolf bij, dan verliest hij zijn gave." },
+    titus:        { set: "karakters", name: "Titus en zijn dansende beer", team: "dorp", desc: "De beer gromt 's ochtends als er een weerwolf direct naast Titus zit." },
+    sektarier:    { set: "karakters", name: "Verschrikkelijke Sektariër", team: "solo", desc: "Het dorp wordt in twee groepen verdeeld. Hij wint als de andere groep helemaal dood is." },
+    wildkind:     { set: "karakters", name: "Kleine wilde", team: "dorp", desc: "Kiest in de eerste nacht een voorbeeld. Sterft dat voorbeeld, dan wordt hij een weerwolf. In de Best Of heet hij Wolvenkind." },
+    wolfshond:    { set: "karakters", name: "Wolfshond", team: "dorp", desc: "Kiest in de eerste nacht of hij weerwolf of burger wordt." },
+    wittewolf:    { set: "karakters", name: "Witte weerwolf", team: "solo", desc: "Wordt wakker met de weerwolven, maar mag om de nacht een weerwolf doden. Wint alleen." },
+    grotewolf:    { set: "karakters", name: "Grote Boze Wolf", team: "wolf", desc: "Doodt elke nacht nog een extra slachtoffer, zolang er geen weerwolf, Kleine wilde of Wolfshond is gestorven." },
+    oerwolf:      { set: "karakters", name: "Besmettelijke Oerwolf", team: "wolf", desc: "Mag één keer per spel het slachtoffer besmetten. Die wordt dan weerwolf en houdt zijn eigen gave." },
+    zigeunerin:   { set: "karakters", name: "Zigeunerin", team: "dorp", desc: "Mag 's nachts een Spiritisme-kaart laten gebruiken. De eerste dode van die nacht beantwoordt de vraag met ja of nee." },
+    // Het Dorp
+    raaf:         { set: "dorp", name: "Raaf", team: "dorp", desc: "Geeft elke nacht één speler twee extra stemmen tegen zich." },
+    pyromaan:     { set: "dorp", name: "Pyromaan", team: "dorp", desc: "Mag één keer per spel 's nachts een gebouw in brand steken. Dat gebouw verliest zijn eigenschap." },
+    // Jubileumeditie
+    aap:          { set: "jubileum", name: "Aap", team: "dorp", desc: "Mag één keer per spel 's nachts kaarten bekijken. Zolang hij burgers ziet, mag hij doorgaan." },
+    poppenspeler: { set: "jubileum", name: "Poppenspeler", team: "dorp", desc: "Kiezen de weerwolven hem, dan neemt zijn pop de klap. Dat werkt één keer." },
+    kolos:        { set: "jubileum", name: "Kolos", team: "dorp", desc: "Doden de weerwolven hem, dan mag hij aan het eind van de nacht een weerwolf doden." },
+    wolvenmoeder: { set: "jubileum", name: "Machtige Wolvenmoeder", team: "wolf", desc: "Wordt de eerste twee nachten nog eens alleen wakker. Wijst ze een burger met een gave aan, dan wordt die een gewone burger." }
   };
   const ORDER = Object.keys(ROLES);
+  const WOLF_ROLES = ["weerwolf", "grotewolf", "oerwolf", "wolvenmoeder", "wittewolf"];
+  const PLAIN = ["burger", "dorpeling"];
   const TEAM = { dorp: "Dorp", wolf: "Weerwolf", solo: "Solo" };
   const CAUSE = {
     weerwolven: "gedood door de weerwolven",
+    grotewolf: "gedood door de Grote Boze Wolf",
     wittewolf: "gedood door de Witte weerwolf",
     gif: "vergiftigd door de Heks",
     stem: "weggestemd door het dorp",
     jager: "neergeschoten door de Jager",
+    kolos: "verpletterd door de Kolos",
+    roest: "gestorven aan de wond van het roestige zwaard",
     liefde: "gestorven van liefdesverdriet",
     spelleider: "door de spelleider op dood gezet"
   };
@@ -249,7 +291,8 @@ input[type="text"] { width: 100%; }
   /* ---------- staat ---------- */
 
   function mkPlayer(id, name) {
-    return { id, name, role: null, orig: null, alive: true, lover: false, charmed: false, mayor: false, canVote: true, elderHit: false, revealed: false };
+    return { id, name, role: null, orig: null, alive: true, lover: false, charmed: false, mayor: false, canVote: true,
+      elderHit: false, revealed: false, infected: false, puppetUsed: false, diedRound: null, group: null };
   }
   function emptyDeck() { const d = {}; ORDER.forEach(r => (d[r] = 0)); return d; }
   function defaultDeck(n) {
@@ -263,22 +306,38 @@ input[type="text"] { width: 100%; }
     d.burger = Math.max(0, left);
     return d;
   }
-  function freshNight() { return { done: [], wolfTarget: null, protect: null, healed: false, poison: null, whiteKill: null, raven: null, seen: null }; }
-  function freshDay() { return { votes: {}, voted: false, out: null, electionDone: false, raven: null }; }
+  function freshNight() {
+    return { done: [], wolfTarget: null, protect: null, healed: false, poison: null, whiteKill: null, bigKill: null,
+      infect: false, raven: null, seen: null, actor: null, fox: null, aap: [], aapStop: false, mother: null, spirit: false };
+  }
+  function freshDay() { return { votes: {}, voted: false, out: null, electionDone: false, raven: null, voteOnly: null, spirit: false, second: false }; }
   function newState(names, sample) {
     const players = names.map((n, i) => mkPlayer(i + 1, n));
-    return {
+    return normalize({
       v: 1, phase: "setup", round: 1, nextId: players.length + 1, players, sample: !!sample,
-      deck: defaultDeck(players.length), opts: { callDead: true, mayor: true },
-      witch: { heal: true, poison: true }, lastProtected: null, wildModel: null,
-      night: freshNight(), day: freshDay(), pending: [], recent: [], log: [], dismissed: null
+      deck: defaultDeck(players.length), opts: { callDead: true, mayor: true }
+    });
+  }
+  // Vult ontbrekende velden aan, ook voor spellen die met een oudere versie zijn opgeslagen.
+  function normalize(o) {
+    const base = {
+      witch: { heal: true, poison: true }, lastProtected: null, wildModel: null, night: freshNight(), day: freshDay(),
+      pending: [], recent: [], log: [], dismissed: null, used: { toneel: [] }, wolfLost: false, rusty: null,
+      powersLost: false, nextVoteOnly: null
     };
+    for (const k in base) if (o[k] === undefined) o[k] = base[k];
+    o.night = Object.assign(freshNight(), o.night);
+    o.day = Object.assign(freshDay(), o.day);
+    o.used = Object.assign({ toneel: [] }, o.used);
+    o.deck = Object.assign(emptyDeck(), o.deck);
+    o.players = o.players.map(p => Object.assign(mkPlayer(p.id, p.name), p));
+    return o;
   }
 
   function load() {
     try {
       const raw = localStorage.getItem(KEY);
-      if (raw) { const o = JSON.parse(raw); if (o && o.v === 1) return o; }
+      if (raw) { const o = JSON.parse(raw); if (o && o.v === 1) return normalize(o); }
     } catch (e) { /* geen opslag beschikbaar */ }
     return null;
   }
@@ -286,7 +345,7 @@ input[type="text"] { width: 100%; }
 
   let S = load() || newState(SAMPLE, true);
   let hist = [];
-  let ui = { tab: "spel", picks: {}, pickKey: null, voteSel: null, reveal: null, confirmNew: false };
+  let ui = { tab: "spel", picks: {}, pickKey: null, voteSel: null, reveal: null, confirmNew: false, openSets: null };
 
   function act(fn) {
     hist.push(JSON.stringify(S));
@@ -313,25 +372,46 @@ input[type="text"] { width: 100%; }
   const holders = r => S.players.filter(p => p.role === r);
   const missing = r => Math.max(0, (S.deck[r] || 0) - holders(r).length);
   const unknownAlive = () => living().filter(p => !p.role);
-  const isWolf = p => p.role === "weerwolf" || p.role === "wittewolf";
-  const roleLabel = p => p.role ? ROLES[p.role].name + (p.orig ? " (was " + ROLES[p.orig].name + ")" : "") : "Onbekend";
+  const isWolf = p => WOLF_ROLES.includes(p.role) || p.infected;
+  const isSpecialVillager = r => r && ROLES[r].team === "dorp" && !PLAIN.includes(r);
+  const roleLabel = p => p.role ? ROLES[p.role].name + (p.orig ? " (was " + ROLES[p.orig].name + ")" : "") + (p.infected ? ", besmet" : "") : "Onbekend";
   const list = names => names.length <= 1 ? names.join("") : names.slice(0, -1).join(", ") + " en " + names[names.length - 1];
   const picks = ns => ui.picks[ns] || [];
+  const deckTotal = () => ORDER.reduce((a, r) => a + (S.deck[r] || 0), 0);
 
   function roleStatus(r) {
     const h = holders(r);
-    if (!(S.deck[r] > 0) && !h.length) return "none";
-    if (h.some(p => p.alive)) return "alive";
+    const actor = S.phase === "night" && S.night.actor === r && holders("toneelspeler").some(p => p.alive);
+    if (!(S.deck[r] > 0) && !h.length && !actor) return "none";
+    if (S.powersLost && ROLES[r].team === "dorp") return "dead";
+    if (actor || h.some(p => p.alive)) return "alive";
     if (missing(r) > 0 && unknownAlive().length) return "alive";
     return "dead";
   }
   function wolfStatus() {
-    const a = roleStatus("weerwolf"), b = roleStatus("wittewolf");
-    if (a === "alive" || b === "alive") return "alive";
-    if (a === "none" && b === "none") return "none";
+    const st = WOLF_ROLES.map(roleStatus);
+    if (st.includes("alive") || living().some(p => p.infected)) return "alive";
+    if (st.every(x => x === "none")) return "none";
     return "dead";
   }
   function log(t) { S.log.push({ r: S.round, ph: S.phase, t }); }
+
+  // Zoekt vanaf speler p de eerstvolgende levende speler in een richting rond de tafel.
+  function neighbour(p, dir, test) {
+    const n = S.players.length;
+    let i = S.players.indexOf(p);
+    for (let k = 1; k < n; k++) {
+      const q = S.players[(i + dir * k + n * k) % n];
+      if (q.alive && q !== p && (!test || test(q))) return q;
+    }
+    return null;
+  }
+  function bearGrowls() {
+    const t = holders("titus").find(p => p.alive);
+    if (!t || S.powersLost) return null;
+    const a = neighbour(t, -1), b = neighbour(t, 1);
+    return { titus: t, growl: t.infected || [a, b].some(q => q && isWolf(q)) };
+  }
 
   /* ---------- sterven ---------- */
 
@@ -342,9 +422,15 @@ input[type="text"] { width: 100%; }
     finishKill(p, cause);
   }
   function finishKill(p, cause) {
-    if (cause === "weerwolven" && p.role === "oudste" && !p.elderHit) {
+    const byWolves = cause === "weerwolven" || cause === "grotewolf";
+    if (byWolves && p.role === "oudste" && !p.elderHit && !S.powersLost) {
       p.elderHit = true;
       log(p.name + " (Dorpsoudste) is aangevallen door de weerwolven en heeft het overleefd.");
+      return;
+    }
+    if (byWolves && p.role === "poppenspeler" && !p.puppetUsed) {
+      p.puppetUsed = true;
+      log(p.name + " (Poppenspeler) is aangevallen door de weerwolven, maar de pop neemt de klap. Hij blijft in leven.");
       return;
     }
     if (cause === "stem" && p.role === "dorpsgek" && !p.revealed) {
@@ -353,14 +439,32 @@ input[type="text"] { width: 100%; }
       S.recent.push({ id: p.id, cause: "dorpsgek" });
       return;
     }
+    const powers = !S.powersLost;
+    if (isWolf(p) || ["wildkind", "wolfshond"].includes(p.role) || ["wildkind", "wolfshond"].includes(p.orig)) S.wolfLost = true;
     p.alive = false;
+    p.diedRound = S.round;
     S.recent.push({ id: p.id, cause });
     log(p.name + " (" + roleLabel(p) + ") is " + CAUSE[cause] + ".");
+
+    if (cause === "stem" && powers) {
+      const maid = S.players.find(q => q.alive && q.role === "dienstmeisje");
+      if (maid && p.role !== "dienstmeisje") S.pending.push({ type: "dienst", id: p.id, maid: maid.id });
+    }
     if (p.mayor) {
       p.mayor = false;
       if (living().length) S.pending.push({ type: "burgemeester", id: p.id });
     }
-    if (p.role === "jager") S.pending.push({ type: "jager", id: p.id });
+    if (p.role === "jager" && powers) S.pending.push({ type: "jager", id: p.id });
+    if (p.role === "kolos" && byWolves && powers) S.pending.push({ type: "kolos", id: p.id });
+    if (p.role === "zondebok" && cause === "stem") S.pending.push({ type: "zondebok", id: p.id });
+    if (p.role === "ridder" && byWolves && powers) {
+      const w = neighbour(p, -1, isWolf);
+      if (w) { S.rusty = w.id; log(w.name + " is gewond door het roestige zwaard en sterft de volgende nacht."); }
+    }
+    if (p.role === "oudste" && ["stem", "jager", "gif"].includes(cause) && !S.powersLost) {
+      S.powersLost = true;
+      log("De Dorpsoudste is door het dorp gedood. Alle burgers verliezen hun bijzondere gaven.");
+    }
     if (p.lover) {
       const other = S.players.find(q => q.lover && q.id !== p.id && q.alive);
       if (other) killPlayer(other.id, "liefde");
@@ -369,7 +473,7 @@ input[type="text"] { width: 100%; }
       const kid = S.players.find(q => q.alive && q.role === "wildkind");
       if (kid) {
         kid.orig = "wildkind"; kid.role = "weerwolf";
-        log(kid.name + " (Wild kind) verliest zijn voorbeeld en is nu een weerwolf. Hij wordt voortaan met de weerwolven wakker.");
+        log(kid.name + " (Kleine wilde) verliest zijn voorbeeld en is nu een weerwolf. Hij wordt voortaan met de weerwolven wakker.");
       }
     }
   }
@@ -380,11 +484,15 @@ input[type="text"] { width: 100%; }
     if (S.phase !== "night" && S.phase !== "day") return null;
     if (S.pending.length) return null;
     const L = living();
+    const angel = S.players.find(p => p.role === "engel" && !p.alive && p.diedRound === 1);
+    if (angel) return { key: "engel", text: "De Engel (" + angel.name + ") is in de eerste ronde gestorven en wint!" };
     if (!L.length) return { key: "niemand", text: "Iedereen is dood. Niemand wint." };
     if (L.length === 2 && L.every(p => p.lover)) return { key: "geliefden", text: "Alleen de geliefden " + list(L.map(p => p.name)) + " zijn over. Zij winnen samen." };
     const piper = L.find(p => p.role === "fluitspeler");
     if (piper && L.every(p => p === piper || p.charmed)) return { key: "fluitspeler", text: "Iedereen is betoverd. De Fluitspeler (" + piper.name + ") wint." };
-    const hidden = unknownAlive().length > 0 && (missing("weerwolf") > 0 || missing("wittewolf") > 0);
+    const sect = L.find(p => p.role === "sektarier");
+    if (sect && sect.group && L.every(p => p.group === sect.group)) return { key: "sektarier", text: "De andere groep is uitgeroeid. De Verschrikkelijke Sektariër (" + sect.name + ") wint." };
+    const hidden = unknownAlive().length > 0 && WOLF_ROLES.some(r => missing(r) > 0);
     if (hidden) return null;
     const wolves = L.filter(isWolf);
     const white = L.find(p => p.role === "wittewolf");
@@ -396,50 +504,84 @@ input[type="text"] { width: 100%; }
 
   /* ---------- de nacht ---------- */
 
+  // Volgorde volgens de spelregels: eerst de opening (alleen nacht 1), dan de vaste nachtvolgorde.
   const STEPS = [
+    { id: "sektarier", role: "sektarier", first: true, title: "De Verschrikkelijke Sektariër",
+      script: "Het dorp is verdeeld in twee groepen. Ik noem wie er in welke groep zit." },
     { id: "dief", role: "dief", first: true, title: "De Dief",
-      script: "Dief, word wakker. Je mag je kaart ruilen met een van de twee kaarten in het midden." },
+      script: "Dief, word wakker. Je mag je kaart ruilen met een van de twee kaarten in het midden. Sluit je ogen weer." },
     { id: "cupido", role: "cupido", first: true, title: "Cupido",
       script: "Cupido, word wakker. Wijs twee spelers aan die verliefd op elkaar worden. Sluit je ogen weer." },
     { id: "geliefden", first: true, title: "De geliefden", cond: () => S.players.filter(p => p.lover).length === 2,
       script: "Ik tik de geliefden aan. Geliefden, word wakker en kijk elkaar aan. Sluit je ogen weer." },
-    { id: "zussen", role: "zus", first: true, title: "De zussen", cond: () => (S.deck.zus || 0) >= 2 || holders("zus").length >= 2,
-      script: "Zussen, word wakker en kijk elkaar aan. Sluit je ogen weer." },
-    { id: "wildkind", role: "wildkind", first: true, title: "Het wilde kind",
-      script: "Wild kind, word wakker. Wijs je voorbeeld aan. Sluit je ogen weer." },
-    { id: "beschermer", role: "beschermer", title: "De Beschermer",
-      script: "Beschermer, word wakker. Wie wil je vannacht beschermen? Sluit je ogen weer." },
+    { id: "raadsheer", role: "raadsheer", first: true, title: "De Stotterende raadsheer",
+      script: "Stotterende raadsheer, word wakker en laat mij je geheime teken zien. Sluit je ogen weer." },
+    { id: "zussen", role: "zus", first: true, title: "De twee gezusters", cond: () => (S.deck.zus || 0) >= 2 || holders("zus").length >= 2,
+      script: "Gezusters, word wakker en kijk elkaar aan. Sluit je ogen weer." },
+    { id: "broers", role: "broer", first: true, title: "De drie gebroeders", cond: () => (S.deck.broer || 0) >= 2 || holders("broer").length >= 2,
+      script: "Gebroeders, word wakker en kijk elkaar aan. Sluit je ogen weer." },
+    { id: "wildkind", role: "wildkind", first: true, title: "De Kleine wilde",
+      script: "Kleine wilde, word wakker. Wijs je grote voorbeeld aan. Sluit je ogen weer." },
+    { id: "titus", role: "titus", first: true, title: "Titus en zijn dansende beer",
+      script: "Titus, word wakker, zodat ik weet wie je bent. Sluit je ogen weer." },
+    { id: "toneelspeler", role: "toneelspeler", title: "De Toneelspeler",
+      script: "Toneelspeler, word wakker. Kies een van deze kaarten. Die rol speel je tot de volgende nacht. Sluit je ogen weer." },
     { id: "ziener", role: "ziener", title: "De Ziener",
       script: "Ziener, word wakker. Wijs iemand aan van wie je de kaart wilt zien. Sluit je ogen weer." },
-    { id: "weerwolven", role: "weerwolf", title: "De Weerwolven",
+    { id: "vos", role: "vos", title: "De Vos", spent: () => !!S.used.foxLost, spentText: "De Vos heeft zijn gave verloren.",
+      script: "Vos, word wakker. Wijs de middelste aan van drie spelers naast elkaar, of schud nee. Sluit je ogen weer." },
+    { id: "aap", role: "aap", title: "De Aap", spent: () => !!S.used.aap && !S.night.aap.length, spentText: "De Aap heeft zijn gave al gebruikt.",
+      script: "Aap, word wakker. Wil je vannacht je gave gebruiken? Wijs dan iemand aan. Sluit je ogen weer." },
+    { id: "beschermer", role: "beschermer", title: "De Genezer",
+      script: "Genezer, word wakker. Wie wil je vannacht beschermen? Sluit je ogen weer." },
+    { id: "weerwolven", role: "*wolf", title: "De Weerwolven",
       script: "Weerwolven, word wakker. Kies samen een slachtoffer. Sluit je ogen weer." },
+    { id: "oerwolf", role: "oerwolf", title: "De Besmettelijke Oerwolf",
+      spent: () => !!S.used.oerwolf || !S.night.wolfTarget, spentText: "De Oerwolf kan nu niet besmetten.",
+      script: "Besmettelijke Oerwolf, wil je het slachtoffer besmetten in plaats van doden? Steek dan je poot op." },
+    { id: "grotewolf", role: "grotewolf", title: "De Grote Boze Wolf",
+      spent: () => S.wolfLost, spentText: "Er is al een weerwolf, Kleine wilde of Wolfshond gestorven. De Grote Boze Wolf mag niet meer extra doden.",
+      script: "Grote Boze Wolf, word nog een keer wakker. Kies een tweede slachtoffer. Sluit je ogen weer." },
+    { id: "wolvenmoeder", role: "wolvenmoeder", only: [1, 2], title: "De Machtige Wolvenmoeder",
+      script: "Machtige Wolvenmoeder, word nog een keer wakker. Wijs een speler aan. Sluit je ogen weer." },
     { id: "wittewolf", role: "wittewolf", even: true, title: "De Witte weerwolf",
       script: "Witte weerwolf, word nog een keer wakker. Wil je een weerwolf doden? Sluit je ogen weer." },
     { id: "heks", role: "heks", title: "De Heks",
-      script: "Heks, word wakker. Dit is het slachtoffer van vannacht. Wil je je levensdrank gebruiken? En je gifdrank? Sluit je ogen weer." },
+      script: "Heks, word wakker. Dit is het slachtoffer van vannacht. Wil je je levenselixer gebruiken? En je gif? Sluit je ogen weer." },
+    { id: "zigeunerin", role: "zigeunerin", title: "De Zigeunerin",
+      script: "Zigeunerin, word wakker. Wil je een Spiritisme-kaart gebruiken? Welke vraag kies je, en wie moet hem stellen? Sluit je ogen weer." },
     { id: "raaf", role: "raaf", title: "De Raaf",
       script: "Raaf, word wakker. Wie krijgt morgen twee extra stemmen tegen zich? Sluit je ogen weer." },
+    { id: "pyromaan", role: "pyromaan", title: "De Pyromaan", spent: () => !!S.used.pyromaan, spentText: "De Pyromaan heeft zijn gave al gebruikt.",
+      script: "Pyromaan, word wakker. Wil je vannacht een gebouw in brand steken? Sluit je ogen weer." },
     { id: "fluitspeler", role: "fluitspeler", title: "De Fluitspeler",
       script: "Fluitspeler, word wakker. Wijs twee spelers aan die je wilt betoveren. Sluit je ogen weer." },
     { id: "betoverden", title: "De betoverden", cond: () => roleStatus("fluitspeler") !== "none" && living().some(p => p.charmed),
       script: "Ik tik de betoverde spelers aan. Betoverden, word wakker en kijk wie er allemaal betoverd zijn. Sluit je ogen weer." },
-    { id: "dageraad", title: "De dageraad",
-      script: "De zon komt op. Iedereen wordt wakker…" }
+    { id: "zussen-overleg", role: "zus", from: 2, title: "De twee gezusters", cond: () => holders("zus").filter(p => p.alive).length >= 2 || (S.deck.zus || 0) >= 2,
+      script: "Gezusters, word wakker. Jullie mogen even in stilte overleggen. Sluit je ogen weer." },
+    { id: "broers-overleg", role: "broer", from: 2, title: "De drie gebroeders", cond: () => holders("broer").filter(p => p.alive).length >= 2 || (S.deck.broer || 0) >= 2,
+      script: "Gebroeders, word wakker. Jullie mogen even in stilte overleggen. Sluit je ogen weer." },
+    { id: "dageraad", title: "De dageraad", script: "" }
   ];
 
   function stepList() {
     const out = [];
     for (const s of STEPS) {
       if (s.first && S.round !== 1) continue;
+      if (s.from && S.round < s.from) continue;
+      if (s.only && !s.only.includes(S.round)) continue;
       if (s.even && S.round % 2 !== 0) continue;
       if (s.cond && !s.cond()) continue;
-      let dead = false;
+      let dead = false, deadText = "";
       if (s.role) {
-        const st = s.id === "weerwolven" ? wolfStatus() : roleStatus(s.role);
+        const st = s.role === "*wolf" ? wolfStatus() : roleStatus(s.role);
         if (st === "none") continue;
-        if (st === "dead") { if (!S.opts.callDead) continue; dead = true; }
+        if (st === "dead") { dead = true; deadText = S.powersLost && s.role !== "*wolf" && ROLES[s.role].team === "dorp" && holders(s.role).some(p => p.alive) ? "De burgers hebben hun gaven verloren." : "Deze rol is dood."; }
       }
-      out.push(Object.assign({}, s, { dead }));
+      if (!dead && s.spent && s.spent()) { dead = true; deadText = s.spentText; }
+      if (dead && !S.opts.callDead) continue;
+      out.push(Object.assign({}, s, { dead, deadText }));
     }
     return out;
   }
@@ -449,16 +591,26 @@ input[type="text"] { width: 100%; }
     const n = S.night;
     S.recent = [];
     S.lastProtected = n.protect;
+    const shielded = id => id === n.protect && P(id).role !== "meisje";
+    if (S.rusty) { const r = S.rusty; S.rusty = null; killPlayer(r, "roest"); }
     if (n.wolfTarget) {
       const t = P(n.wolfTarget);
-      if (n.wolfTarget === n.protect) log(t.name + " is aangevallen door de weerwolven maar was beschermd door de Beschermer.");
+      if (shielded(t.id)) log(t.name + " is aangevallen door de weerwolven maar was beschermd door de Genezer.");
       else if (n.healed) log(t.name + " is aangevallen door de weerwolven maar gered door de Heks.");
-      else killPlayer(n.wolfTarget, "weerwolven");
+      else if (n.infect && t.alive) { t.infected = true; log(t.name + " is besmet door de Besmettelijke Oerwolf. Hoort nu bij de weerwolven en houdt zijn eigen gave."); }
+      else killPlayer(t.id, "weerwolven");
+    }
+    if (n.bigKill) {
+      if (shielded(n.bigKill)) log(nameOf(n.bigKill) + " is aangevallen door de Grote Boze Wolf maar was beschermd door de Genezer.");
+      else killPlayer(n.bigKill, "grotewolf");
     }
     if (n.whiteKill) killPlayer(n.whiteKill, "wittewolf");
     if (n.poison) killPlayer(n.poison, "gif");
     S.phase = "day";
     S.day = freshDay();
+    S.day.spirit = n.spirit;
+    S.day.voteOnly = S.nextVoteOnly;
+    S.nextVoteOnly = null;
     if (n.raven) {
       const p = P(n.raven);
       if (p && p.alive) { S.day.votes[p.id] = 2; S.day.raven = p.id; }
@@ -484,12 +636,10 @@ input[type="text"] { width: 100%; }
     document.getElementById("phase-sub").textContent = S.phase === "setup"
       ? S.players.length + " spelers aan tafel"
       : L.length + " van de " + S.players.length + " spelers leven nog";
-    document.title = "Wakkerdam Spelleider";
     document.getElementById("undo-btn").disabled = !hist.length;
     document.querySelectorAll(".tabs button").forEach(b => {
       if (b.dataset.tab === ui.tab) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
     });
-    const main = document.getElementById("main");
     let h = "";
     if (ui.tab === "spel") {
       if (S.phase === "setup") h = renderSetup();
@@ -498,7 +648,7 @@ input[type="text"] { width: 100%; }
       else h = renderEnd();
     } else if (ui.tab === "spelers") h = renderPlayers();
     else h = renderLog();
-    main.innerHTML = h;
+    document.getElementById("main").innerHTML = h;
     renderOverlay();
   }
 
@@ -507,7 +657,7 @@ input[type="text"] { width: 100%; }
     if (!cands.length) return '<p class="note">Er is niemand om te kiezen.</p>';
     return '<div class="picker">' + cands.map(p =>
       '<button type="button" class="pick' + (sel.includes(p.id) ? " on" : "") + '" aria-pressed="' + sel.includes(p.id) + '" data-action="pick" data-ns="' + ns + '" data-max="' + max + '" data-id="' + p.id + '">' +
-      esc(p.name) + '<small>' + esc(p.role ? ROLES[p.role].name : "rol onbekend") + (p.lover ? " · geliefde" : "") + (p.charmed ? " · betoverd" : "") + "</small></button>"
+      esc(p.name) + "<small>" + esc(p.role ? ROLES[p.role].name : "rol onbekend") + (p.infected ? " · besmet" : "") + (p.lover ? " · geliefde" : "") + (p.charmed ? " · betoverd" : "") + "</small></button>"
     ).join("") + "</div>";
   }
   function teamTag(r) {
@@ -518,12 +668,28 @@ input[type="text"] { width: 100%; }
     const t = [];
     if (p.mayor) t.push('<span class="tag acc">Burgemeester</span>');
     if (p.lover) t.push('<span class="tag wolf">Geliefde</span>');
+    if (p.infected) t.push('<span class="tag wolf">Besmet</span>');
     if (p.charmed) t.push('<span class="tag solo">Betoverd</span>');
+    if (p.group) t.push('<span class="tag">Groep ' + p.group + "</span>");
     if (!p.canVote) t.push('<span class="tag">Geen stemrecht</span>');
     if (p.elderHit) t.push('<span class="tag">Aanval overleefd</span>');
-    if (S.wildModel === p.id) t.push('<span class="tag">Voorbeeld wild kind</span>');
+    if (p.puppetUsed) t.push('<span class="tag">Pop gebruikt</span>');
+    if (S.wildModel === p.id) t.push('<span class="tag">Voorbeeld Kleine wilde</span>');
+    if (S.rusty === p.id) t.push('<span class="tag wolf">Sterft volgende nacht</span>');
     if (!p.alive) t.push('<span class="tag">Dood</span>');
     return t.length ? '<span class="tags">' + t.join("") + "</span>" : "";
+  }
+  function roleOptions(sel, withUnknown, exclude) {
+    let h = withUnknown ? '<option value=""' + (sel ? "" : " selected") + ">? Nog onbekend</option>" : "";
+    for (const set in SETS) {
+      const rs = ORDER.filter(r => ROLES[r].set === set && !(exclude || []).includes(r));
+      if (!rs.length) continue;
+      h += '<optgroup label="' + SETS[set] + '">' + rs.map(r => '<option value="' + r + '"' + (sel === r ? " selected" : "") + ">" + ROLES[r].name + "</option>").join("") + "</optgroup>";
+    }
+    return h;
+  }
+  function roleSelect(id, label, opts) {
+    return '<select id="' + id + '" aria-label="' + esc(label) + '">' + opts + "</select>";
   }
 
   /* --- voorbereiding --- */
@@ -531,11 +697,11 @@ input[type="text"] { width: 100%; }
   function setupProblems() {
     const errs = [];
     const n = S.players.length;
-    const total = ORDER.reduce((a, r) => a + (S.deck[r] || 0), 0);
+    const total = deckTotal();
     if (n < 4) errs.push("Je hebt minstens 4 spelers nodig.");
     if (S.players.some(p => !p.name.trim())) errs.push("Niet iedere speler heeft een naam.");
     if (total !== n) errs.push("Er zijn " + total + " kaarten voor " + n + " spelers. Dat moet gelijk zijn.");
-    if (!(S.deck.weerwolf > 0) && !(S.deck.wittewolf > 0)) errs.push("Er moet minstens één weerwolf meedoen.");
+    if (!WOLF_ROLES.some(r => S.deck[r] > 0)) errs.push("Er moet minstens één weerwolf meedoen.");
     for (const r of ORDER) {
       const c = holders(r).length;
       if (c > (S.deck[r] || 0)) errs.push(c + "× " + ROLES[r].name + " toegewezen, maar er " + ((S.deck[r] || 0) === 1 ? "is" : "zijn") + " maar " + (S.deck[r] || 0) + " in het spel.");
@@ -543,17 +709,16 @@ input[type="text"] { width: 100%; }
     return errs;
   }
 
-  function roleOptions(sel, withUnknown) {
-    return (withUnknown ? '<option value=""' + (sel ? "" : " selected") + ">? Nog onbekend</option>" : "") +
-      ORDER.map(r => '<option value="' + r + '"' + (sel === r ? " selected" : "") + ">" + ROLES[r].name + "</option>").join("");
-  }
-
   function renderSetup() {
     const n = S.players.length;
-    const total = ORDER.reduce((a, r) => a + (S.deck[r] || 0), 0);
+    const total = deckTotal();
     const errs = setupProblems();
     const allKnown = S.players.every(p => p.role);
-    let h = '<section class="block"><div><h2>Spelers</h2><p class="note">In de volgorde waarin ze aan tafel zitten.</p></div>';
+    if (!ui.openSets) {
+      ui.openSets = {};
+      for (const set in SETS) ui.openSets[set] = set === "basis" || ORDER.some(r => ROLES[r].set === set && S.deck[r] > 0);
+    }
+    let h = '<section class="block"><div><h2>Spelers</h2><p class="note">In de volgorde waarin ze aan tafel zitten. Die volgorde gebruikt de app voor de Vos, Titus en de Ridder.</p></div>';
     if (S.sample) h += '<p class="note warn">Dit zijn voorbeeldnamen. Pas ze aan of verwijder ze.</p>';
     h += '<ol class="rows">' + S.players.map((p, i) =>
       '<li class="setup-row"><span class="num">' + (i + 1) + "</span>" +
@@ -564,20 +729,31 @@ input[type="text"] { width: 100%; }
     h += '<div class="addrow"><input type="text" id="new-name" placeholder="Naam van een nieuwe speler" aria-label="Naam van een nieuwe speler"><button type="button" class="btn" data-action="add-player">Toevoegen</button></div></section>';
 
     h += '<section class="block"><div class="status"><h2>Kaarten in het spel</h2><span class="tag ' + (total === n ? "good" : "wolf") + '">' + total + " kaarten · " + n + " spelers</span></div>";
-    h += '<p class="note">Speel je met de Dief? Leg twee extra kaarten apart. Die tel je hier niet mee.</p>';
-    h += '<ul class="rows">' + ORDER.map(r =>
-      '<li><div class="grow"><div class="status"><span class="pname">' + ROLES[r].name + "</span>" + teamTag(r) + '</div><p class="role-desc">' + ROLES[r].desc + "</p></div>" +
-      '<div class="stepper"><button type="button" data-action="deck" data-role="' + r + '" data-delta="-1" aria-label="Eén ' + ROLES[r].name + ' minder">−</button><output>' + (S.deck[r] || 0) + '</output><button type="button" data-action="deck" data-role="' + r + '" data-delta="1" aria-label="Eén ' + ROLES[r].name + ' meer">+</button></div></li>'
-    ).join("") + "</ul></section>";
+    h += '<p class="note">Speel je met de Dief? Leg twee extra kaarten apart. Die tel je hier niet mee. <em>Het Pact</em> bevat het basisspel, Volle Maan, Karakters en Het Dorp.</p>';
+    for (const set in SETS) {
+      const rs = ORDER.filter(r => ROLES[r].set === set);
+      const cnt = rs.reduce((a, r) => a + (S.deck[r] || 0), 0);
+      const open = ui.openSets[set];
+      h += '<div class="setgroup"><button type="button" class="sethead" data-action="toggle-set" data-set="' + set + '" aria-expanded="' + open + '">' +
+        '<span class="pname">' + SETS[set] + '</span><span class="chev">' + (cnt ? cnt + " in het spel · " : "") + rs.length + " rollen " + (open ? "▴" : "▾") + "</span></button>";
+      if (open) {
+        h += '<ul class="rows">' + rs.map(r =>
+          '<li><div class="grow"><div class="status"><span class="pname">' + ROLES[r].name + "</span>" + teamTag(r) + '</div><p class="role-desc">' + ROLES[r].desc + "</p></div>" +
+          '<div class="stepper"><button type="button" data-action="deck" data-role="' + r + '" data-delta="-1" aria-label="Eén ' + ROLES[r].name + ' minder">−</button><output>' + (S.deck[r] || 0) + '</output><button type="button" data-action="deck" data-role="' + r + '" data-delta="1" aria-label="Eén ' + ROLES[r].name + ' meer">+</button></div></li>'
+        ).join("") + "</ul>";
+      }
+      h += "</div>";
+    }
+    h += "</section>";
 
     h += '<section class="block"><h2>Instellingen</h2>' +
-      '<label class="check"><input type="checkbox" id="opt-callDead" data-change="opt" data-key="callDead"' + (S.opts.callDead ? " checked" : "") + '><span>Dode rollen toch afroepen<br><span class="note">Zo verraad je niet welke rollen al dood zijn.</span></span></label>' +
-      '<label class="check"><input type="checkbox" id="opt-mayor" data-change="opt" data-key="mayor"' + (S.opts.mayor ? " checked" : "") + '><span>Met burgemeester<br><span class="note">Op de eerste dag wordt een burgemeester gekozen. Zijn stem telt dubbel.</span></span></label></section>';
+      '<label class="check"><input type="checkbox" id="opt-callDead" data-change="opt" data-key="callDead"' + (S.opts.callDead ? " checked" : "") + '><span>Dode rollen toch afroepen<br><span class="note">Zo verraad je niet welke rollen al dood zijn of hun gave al gebruikt hebben.</span></span></label>' +
+      '<label class="check"><input type="checkbox" id="opt-mayor" data-change="opt" data-key="mayor"' + (S.opts.mayor ? " checked" : "") + '><span>Met burgemeester<br><span class="note">Op de eerste dag wordt een burgemeester gekozen. Zijn stem telt dubbel bij een gelijke stand.</span></span></label></section>';
 
     h += '<section class="block"><h2>Rollen verdelen</h2>' +
       '<p class="note">Deel je echte kaarten uit? Laat de rollen dan op “onbekend” staan. In de eerste nacht vraagt de app wie er wakker wordt. Rollen die niet wakker worden vul je in zodra die speler sterft.</p>' +
-      '<div class="btns"><button type="button" class="btn" data-action="deal"' + (ORDER.reduce((a, r) => a + (S.deck[r] || 0), 0) === n ? "" : " disabled") + '>Willekeurig delen</button>' +
-      '<button type="button" class="btn" data-action="show-roles"' + (allKnown ? "" : " disabled") + '>Rollen laten zien</button>' +
+      '<div class="btns"><button type="button" class="btn" data-action="deal"' + (total === n ? "" : " disabled") + ">Willekeurig delen</button>" +
+      '<button type="button" class="btn" data-action="show-roles"' + (allKnown ? "" : " disabled") + ">Rollen laten zien</button>" +
       '<button type="button" class="btn quiet" data-action="clear-roles">Rollen wissen</button></div>' +
       (allKnown ? "" : '<p class="note">“Rollen laten zien” werkt als iedere speler een rol heeft. Daarmee geef je de telefoon rond.</p>') + "</section>";
 
@@ -586,29 +762,36 @@ input[type="text"] { width: 100%; }
     return h;
   }
 
-  /* --- nacht --- */
+  /* --- openstaande zaken --- */
 
   function pendingHtml() {
     const it = S.pending[0];
     if (!it) return "";
     const p = P(it.id);
+    const btns = (main, mainLabel, skipLabel, ok) => '<div class="btns"><button type="button" class="btn primary" data-action="' + main + '"' + (ok ? "" : " disabled") + ">" + mainLabel + "</button>" +
+      (skipLabel ? '<button type="button" class="btn quiet" data-action="pend-skip">' + skipLabel + "</button>" : "") + "</div>";
     let h = '<article class="card alert"><p class="eyebrow">Eerst afhandelen</p>';
     if (it.type === "reveal") {
       const opts = ORDER.filter(r => missing(r) > 0);
-      const use = opts.length ? opts : ORDER;
       h += "<h2>Welke kaart had " + esc(p.name) + "?</h2><p>" + esc(p.name) + " is " + CAUSE[it.cause] + ". Draai de kaart om en leg de rol vast.</p>" +
-        '<select id="pend-role" aria-label="Rol van ' + esc(p.name) + '">' + use.map(r => '<option value="' + r + '">' + ROLES[r].name + "</option>").join("") + "</select>" +
-        '<div class="btns"><button type="button" class="btn primary" data-action="pend-reveal">Vastleggen</button></div>';
+        roleSelect("pend-role", "Rol van " + p.name, opts.length ? opts.map(r => '<option value="' + r + '">' + ROLES[r].name + "</option>").join("") : roleOptions("", false)) +
+        btns("pend-reveal", "Vastleggen", "", true);
     } else if (it.type === "jager") {
-      const sel = picks("shoot");
       h += "<h2>De Jager schiet</h2><p>" + esc(p.name) + " was de Jager en schiet direct iemand neer.</p>" + picker("shoot", 1, living()) +
-        '<div class="btns"><button type="button" class="btn primary" data-action="pend-shoot"' + (sel.length ? "" : " disabled") + ">Schieten</button>" +
-        '<button type="button" class="btn quiet" data-action="pend-skip">Schiet niemand</button></div>';
+        btns("pend-shoot", "Schieten", "Schiet niemand", picks("shoot").length);
+    } else if (it.type === "kolos") {
+      h += "<h2>De Kolos slaat terug</h2><p>" + esc(p.name) + " was de Kolos. Roep hem: hij kiest welke weerwolf hij meeneemt.</p>" + picker("shoot", 1, living()) +
+        btns("pend-shoot", "Meenemen", "Niemand", picks("shoot").length);
     } else if (it.type === "burgemeester") {
-      const sel = picks("succ");
-      h += "<h2>Nieuwe burgemeester</h2><p>" + esc(p.name) + " was burgemeester en wijst een opvolger aan.</p>" + picker("succ", 1, living()) +
-        '<div class="btns"><button type="button" class="btn primary" data-action="pend-mayor"' + (sel.length ? "" : " disabled") + ">Benoemen</button>" +
-        '<button type="button" class="btn quiet" data-action="pend-skip">Geen opvolger</button></div>';
+      h += "<h2>Nieuwe burgemeester</h2><p>" + esc(p.name) + " was burgemeester en wijst een opvolger aan.</p>" + picker("succ", 1, living().filter(q => q.canVote)) +
+        btns("pend-mayor", "Benoemen", "Geen opvolger", picks("succ").length);
+    } else if (it.type === "zondebok") {
+      h += "<h2>De Zondebok kiest</h2><p>" + esc(p.name) + " was de Zondebok en bepaalt wie er de volgende dag mag stemmen.</p>" + picker("voters", 99, living()) +
+        btns("pend-voters", "Alleen zij mogen stemmen", "Iedereen mag stemmen", picks("voters").length);
+    } else if (it.type === "dienst") {
+      const maid = P(it.maid);
+      h += "<h2>Het Toegewijde dienstmeisje</h2><p>Wil " + esc(maid.name) + " de rol van " + esc(p.name) + " (" + esc(roleLabel(p)) + ") overnemen? Dat moet vóór de kaart wordt omgedraaid.</p>" +
+        btns("pend-maid", "Ja, neemt de rol over", "Nee", true);
     }
     return h + "</article>";
   }
@@ -621,11 +804,19 @@ input[type="text"] { width: 100%; }
       '<button type="button" class="btn quiet" data-action="win-continue">Toch doorspelen</button></div></article>';
   }
 
+  /* --- nacht --- */
+
+  function stepRoles(s) {
+    if (s.role === "*wolf") return S.round === 1 ? WOLF_ROLES.concat("wolfshond") : WOLF_ROLES;
+    return s.role ? [s.role] : [];
+  }
+
   function whoLine(s) {
     if (!s.role) return "";
-    const roles = s.id === "weerwolven" ? ["weerwolf", "wittewolf"] : [s.role];
-    const hs = S.players.filter(p => roles.includes(p.role));
-    const al = hs.filter(p => p.alive).map(p => p.name);
+    const roles = stepRoles(s);
+    const al = S.players.filter(p => p.alive && (roles.includes(p.role) || (s.role === "*wolf" && p.infected))).map(p => p.name);
+    const actor = s.role !== "*wolf" && S.night.actor === s.role ? holders("toneelspeler").find(p => p.alive) : null;
+    if (actor) al.push(actor.name + " (Toneelspeler)");
     const miss = roles.reduce((a, r) => a + missing(r), 0);
     let t = al.length ? "Wie: " + list(al) : "";
     if (miss > 0 && !s.dead) t += (t ? " · " : "") + miss + " nog niet vastgelegd";
@@ -634,13 +825,13 @@ input[type="text"] { width: 100%; }
 
   function identifyHtml(s) {
     if (!s.role || s.dead) return "";
-    const roles = s.id === "weerwolven" ? ["weerwolf", "wittewolf"] : [s.role];
-    const r = roles.find(x => missing(x) > 0);
+    const r = stepRoles(s).find(x => missing(x) > 0);
     const cands = unknownAlive();
     if (!r || !cands.length) return "";
     const need = Math.min(missing(r), cands.length);
     const sel = picks("id");
     return '<div class="stack"><h3>Wie ' + (need > 1 ? "worden" : "wordt") + " er wakker als " + ROLES[r].name + (need > 1 ? " (" + need + ")" : "") + "?</h3>" +
+      (r === "wolfshond" ? '<p class="note">Alleen als de Wolfshond kiest om weerwolf te worden, doet hij nu zijn ogen open.</p>' : "") +
       picker("id", need, cands) +
       '<div class="btns"><button type="button" class="btn" data-action="identify" data-role="' + r + '"' + (sel.length ? "" : " disabled") + ">Vastleggen als " + ROLES[r].name + "</button></div></div>";
   }
@@ -648,108 +839,159 @@ input[type="text"] { width: 100%; }
   function stepBody(s) {
     const n = S.night;
     const next = (label, cls) => '<button type="button" class="btn ' + (cls || "quiet") + '" data-action="step-next" data-step="' + s.id + '">' + (label || "Overslaan") + "</button>";
+    const go = (action, label, ok, cls) => '<button type="button" class="btn ' + (cls || "primary") + '" data-action="' + action + '"' + (ok ? "" : " disabled") + ">" + label + "</button>";
     if (s.dead) {
-      return '<p class="note warn">Deze rol is dood. Roep hem toch af en wacht een paar tellen, zodat niemand iets merkt.</p><div class="btns">' + next("Volgende", "primary") + "</div>";
+      return '<p class="note warn">' + esc(s.deadText) + " Roep toch af en wacht een paar tellen, zodat niemand iets merkt.</p><div class=\"btns\">" + next("Volgende", "primary") + "</div>";
     }
     const L = living();
+    const sel = picks("act");
+    const self = r => holders(r).map(p => p.id);
     switch (s.id) {
+      case "sektarier":
+        return '<p class="note">Kies de spelers van groep A. De rest is groep B. Verdeel bijvoorbeeld op haarlengte of op wie er links en rechts van een denkbeeldige lijn zit.</p>' +
+          picker("act", 99, L) + '<div class="btns">' + go("sect", "Groepen vastleggen", sel.length && sel.length < L.length) + "</div>";
       case "dief": {
         const thief = holders("dief").find(p => p.alive);
         if (!thief) return '<div class="btns">' + next() + "</div>";
-        return '<label class="stack"><span class="small">Nieuwe rol van ' + esc(thief.name) + '</span><select id="dief-role">' + ORDER.filter(r => r !== "dief").map(r => '<option value="' + r + '">' + ROLES[r].name + "</option>").join("") + "</select></label>" +
-          '<div class="btns"><button type="button" class="btn primary" data-action="dief-swap">Ruilen</button>' + next("Niet ruilen") + "</div>";
+        return '<label class="stack"><span class="small">Nieuwe rol van ' + esc(thief.name) + "</span>" + roleSelect("dief-role", "Nieuwe rol", roleOptions("", false, ["dief"])) + "</label>" +
+          '<p class="note">Liggen er twee weerwolven in het midden, dan moet de Dief ruilen.</p>' +
+          '<div class="btns">' + go("dief-swap", "Ruilen", true) + next("Niet ruilen") + "</div>";
       }
-      case "cupido": {
-        const sel = picks("act");
-        return picker("act", 2, L) + '<div class="btns"><button type="button" class="btn primary" data-action="cupido"' + (sel.length === 2 ? "" : " disabled") + ">Maak ze geliefden</button>" + next() + "</div>";
+      case "cupido":
+        return '<p class="note">Cupido mag zichzelf ook aanwijzen.</p>' + picker("act", 2, L) + '<div class="btns">' + go("cupido", "Maak ze geliefden", sel.length === 2) + next() + "</div>";
+      case "geliefden":
+        return "<p>Tik " + esc(list(S.players.filter(p => p.lover).map(p => p.name))) + " aan.</p><div class=\"btns\">" + next("Volgende", "primary") + "</div>";
+      case "raadsheer":
+        return '<p class="note">Onthoud het teken. Geeft hij het overdag, dan volgt er na de stemming een tweede stemming.</p><div class="btns">' + next("Volgende", "primary") + "</div>";
+      case "zussen": case "broers": case "zussen-overleg": case "broers-overleg": {
+        const z = holders(s.role).filter(p => p.alive).map(p => p.name);
+        return (z.length ? "<p>" + esc(list(z)) + ".</p>" : "") + '<div class="btns">' + next("Volgende", "primary") + "</div>";
       }
-      case "geliefden": {
-        const lv = S.players.filter(p => p.lover).map(p => p.name);
-        return "<p>Tik " + esc(list(lv)) + " aan.</p><div class=\"btns\">" + next("Volgende", "primary") + "</div>";
-      }
-      case "zussen": {
-        const z = holders("zus").map(p => p.name);
-        return (z.length ? "<p>De zussen: " + esc(list(z)) + ".</p>" : "") + '<div class="btns">' + next("Volgende", "primary") + "</div>";
-      }
-      case "wildkind": {
-        const sel = picks("act");
-        const kids = holders("wildkind").map(p => p.id);
-        return picker("act", 1, L.filter(p => !kids.includes(p.id))) +
-          '<div class="btns"><button type="button" class="btn primary" data-action="wild"' + (sel.length ? "" : " disabled") + ">Voorbeeld vastleggen</button>" + next() + "</div>";
-      }
-      case "beschermer": {
-        const sel = picks("act");
-        const last = S.lastProtected && P(S.lastProtected);
-        return (last ? '<p class="note">Vorige nacht beschermd: ' + esc(last.name) + ". Die mag nu niet.</p>" : "") +
-          picker("act", 1, L.filter(p => p.id !== S.lastProtected)) +
-          '<div class="btns"><button type="button" class="btn primary" data-action="protect"' + (sel.length ? "" : " disabled") + ">Beschermen</button>" + next("Niemand beschermen") + "</div>";
+      case "wildkind":
+        return picker("act", 1, L.filter(p => !self("wildkind").includes(p.id))) + '<div class="btns">' + go("wild", "Voorbeeld vastleggen", sel.length) + next() + "</div>";
+      case "titus":
+        return '<p class="note">Elke ochtend laat de app zien of de beer gromt.</p><div class="btns">' + next("Volgende", "primary") + "</div>";
+      case "toneelspeler": {
+        if (n.actor) return "<p>De Toneelspeler speelt tot de volgende nacht: <strong>" + esc(ROLES[n.actor].name) + "</strong>. Roep hem ook bij die rol.</p><div class=\"btns\">" + next("Volgende", "primary") + "</div>";
+        const opts = ORDER.filter(r => isSpecialVillager(r) && r !== "toneelspeler" && !S.used.toneel.includes(r));
+        return '<p class="note">Laat drie kaarten met een gave zien. Al gekozen: ' + esc(S.used.toneel.length ? list(S.used.toneel.map(r => ROLES[r].name)) : "nog niets") + ".</p>" +
+          '<div class="addrow">' + roleSelect("actor-role", "Gekozen rol", opts.map(r => '<option value="' + r + '">' + ROLES[r].name + "</option>").join("")) + go("actor", "Kiezen", opts.length, "") + "</div>" +
+          '<div class="btns">' + next("Geen rol") + "</div>";
       }
       case "ziener": {
-        if (n.seen) {
-          const p = P(n.seen);
-          let h = '<div class="stack"><h3>' + esc(p.name) + ' is</h3><p class="big-reveal">' + esc(p.role ? ROLES[p.role].name : "Nog onbekend") + "</p>";
-          if (!p.role) h += '<p class="note">Kijk mee naar de kaart en leg de rol vast.</p><div class="addrow"><select id="seer-role" aria-label="Rol van ' + esc(p.name) + '">' + roleOptions("", false) + '</select><button type="button" class="btn" data-action="seer-record">Vastleggen</button></div>';
-          return h + '</div><div class="btns">' + next("Volgende", "primary") + "</div>";
+        if (n.seen) return revealHtml(P(n.seen), "seer-record") + '<div class="btns">' + next("Volgende", "primary") + "</div>";
+        return picker("act", 1, L.filter(p => !self("ziener").includes(p.id))) + '<div class="btns">' + go("see", "Kaart bekijken", sel.length) + next() + "</div>";
+      }
+      case "vos": {
+        if (n.fox) {
+          const grp = n.fox.map(P);
+          const hit = grp.some(isWolf);
+          return "<p>Groepje: " + esc(list(grp.map(p => p.name))) + '.</p><p class="big-reveal">' + (hit ? "Duim omhoog" : "Duim omlaag") + "</p>" +
+            (hit ? '<p class="note">Er zit minstens één weerwolf bij.</p>' : '<p class="note warn">Geen weerwolf. De Vos verliest zijn gave.</p>') +
+            '<div class="btns">' + next("Volgende", "primary") + "</div>";
         }
-        const sel = picks("act");
-        const seers = holders("ziener").map(p => p.id);
-        return picker("act", 1, L.filter(p => !seers.includes(p.id))) +
-          '<div class="btns"><button type="button" class="btn primary" data-action="see"' + (sel.length ? "" : " disabled") + ">Kaart bekijken</button>" + next() + "</div>";
+        return '<p class="note">Wijs de middelste speler aan. De app neemt de levende buren links en rechts mee.</p>' +
+          picker("act", 1, L) + '<div class="btns">' + go("fox", "Groepje bekijken", sel.length) + next("Vos past") + "</div>";
+      }
+      case "aap": {
+        const seen = n.aap.map(P);
+        let h = seen.map(p => "<p><strong>" + esc(p.name) + "</strong>: " + esc(p.role ? ROLES[p.role].name : "rol onbekend") + "</p>").join("");
+        const last = seen[seen.length - 1];
+        const canGo = !last || (last.role && ROLES[last.role].team === "dorp" && !last.infected);
+        if (seen.length && !canGo) h += '<p class="note warn">Geen burger. De Aap moet stoppen.</p>';
+        if (canGo) h += (seen.length ? '<p class="note">Een burger. De Aap mag doorgaan of stoppen.</p>' : '<p class="note">Dit kan maar één keer per spel.</p>') +
+          picker("act", 1, L.filter(p => !self("aap").includes(p.id) && !n.aap.includes(p.id))) +
+          '<div class="btns">' + go("aap", seen.length ? "Nog een kaart" : "Kaart bekijken", sel.length) + "</div>";
+        return h + '<div class="btns">' + next(seen.length ? "Klaar" : "Vannacht niet", seen.length ? "primary" : "quiet") + "</div>";
+      }
+      case "beschermer": {
+        const last = S.lastProtected && P(S.lastProtected);
+        return (last ? '<p class="note">Vorige nacht beschermd: ' + esc(last.name) + ". Die mag nu niet.</p>" : "") +
+          (roleStatus("meisje") === "alive" ? '<p class="note">Het Onschuldige meisje kan niet beschermd worden.</p>' : "") +
+          picker("act", 1, L.filter(p => p.id !== S.lastProtected)) +
+          '<div class="btns">' + go("protect", "Beschermen", sel.length) + next("Niemand beschermen") + "</div>";
       }
       case "weerwolven": {
-        const sel = picks("act");
         let h = "";
         if (S.round === 1) h += '<p class="note">Eerste nacht: laat de weerwolven elkaar eerst herkennen.</p>';
-        if (roleStatus("meisje") === "alive") h += '<p class="note">Het Klein meisje mag nu gluren. Let op of de weerwolven haar betrappen.</p>';
-        if (holders("weerwolf").some(p => p.orig === "wildkind" && p.alive)) h += '<p class="note">Vergeet het wilde kind niet: dat is nu ook een weerwolf.</p>';
+        const dog = S.players.find(p => p.alive && p.role === "wolfshond");
+        if (S.round === 1 && dog) h += '<div class="stack"><h3>Wolfshond (' + esc(dog.name) + ")</h3><div class=\"btns\">" +
+          '<button type="button" class="btn" data-action="dog" data-choice="weerwolf">Wordt weerwolf</button><button type="button" class="btn" data-action="dog" data-choice="burger">Blijft burger</button></div></div>';
+        if (roleStatus("meisje") === "alive") h += '<p class="note">Het Onschuldige meisje mag nu gluren. Betrappen de weerwolven haar, kies haar dan als slachtoffer.</p>';
+        if (S.players.some(p => p.alive && (p.orig === "wildkind" || p.orig === "wolfshond") && p.role === "weerwolf")) h += '<p class="note">Vergeet de Kleine wilde of Wolfshond niet: die is nu ook weerwolf.</p>';
+        if (S.players.some(p => p.alive && p.infected)) h += '<p class="note">Besmette spelers worden ook met de weerwolven wakker.</p>';
         return h + picker("act", 1, L.filter(p => !isWolf(p))) +
-          '<div class="btns"><button type="button" class="btn primary" data-action="wolves"' + (sel.length ? "" : " disabled") + ">Slachtoffer vastleggen</button>" + next("Geen slachtoffer") + "</div>";
+          '<div class="btns">' + go("wolves", "Slachtoffer vastleggen", sel.length) + next("Geen slachtoffer") + "</div>";
       }
-      case "wittewolf": {
-        const sel = picks("act");
-        return '<p class="note">Alleen op even nachten. De Witte weerwolf mag een andere weerwolf doden.</p>' +
-          picker("act", 1, L.filter(p => p.role === "weerwolf")) +
-          '<div class="btns"><button type="button" class="btn primary" data-action="white"' + (sel.length ? "" : " disabled") + ">Doden</button>" + next("Niemand doden") + "</div>";
+      case "oerwolf":
+        return "<p>Slachtoffer: <strong>" + esc(nameOf(n.wolfTarget)) + "</strong>. Dit kan maar één keer per spel.</p>" +
+          '<div class="btns">' + go("infect", "Besmetten", true, "danger") + next("Niet besmetten", "primary") + "</div>";
+      case "grotewolf":
+        return picker("act", 1, L.filter(p => !isWolf(p) && p.id !== n.wolfTarget)) +
+          '<div class="btns">' + go("bigwolf", "Tweede slachtoffer vastleggen", sel.length) + next("Geen tweede slachtoffer") + "</div>";
+      case "wolvenmoeder": {
+        if (n.mother) {
+          const m = n.mother;
+          return "<p><strong>" + esc(nameOf(m.id)) + "</strong>: " + (m.lost ? "verliest de gave van " + esc(ROLES[m.lost].name) + " en is nu een gewone burger." : "geen burger met een gave. Er gebeurt niets.") + "</p>" +
+            '<div class="btns">' + next("Volgende", "primary") + "</div>";
+        }
+        return '<p class="note">Alleen in de eerste twee nachten.</p>' + picker("act", 1, L.filter(p => p.role !== "wolvenmoeder")) +
+          '<div class="btns">' + go("mother", "Aanwijzen", sel.length) + next("Niemand") + "</div>";
       }
+      case "wittewolf":
+        return '<p class="note">Alleen op even nachten.</p>' + picker("act", 1, L.filter(p => isWolf(p) && p.role !== "wittewolf")) +
+          '<div class="btns">' + go("white", "Doden", sel.length) + next("Niemand doden") + "</div>";
       case "heks": {
         const t = n.wolfTarget && P(n.wolfTarget);
-        let h = "<p>" + (t ? "Slachtoffer van de weerwolven: <strong>" + esc(t.name) + "</strong>" + (n.protect === t.id ? " <span class=\"tag good\">beschermd</span>" : "") : "De weerwolven hebben niemand gekozen.") + "</p>";
-        h += '<div class="facts"><div class="fact"><h3>Levensdrank</h3><p>' + (n.healed ? "Gebruikt op " + esc(t.name) : S.witch.heal ? "Nog beschikbaar" : "Op") + '</p></div><div class="fact"><h3>Gifdrank</h3><p>' + (n.poison ? "Gegeven aan " + esc(nameOf(n.poison)) : S.witch.poison ? "Nog beschikbaar" : "Op") + "</p></div></div>";
-        if (S.witch.heal && t && !n.healed) h += '<div class="btns"><button type="button" class="btn" data-action="heal">Levensdrank op ' + esc(t.name) + "</button></div>";
+        let h = "<p>" + (t ? "Slachtoffer van de weerwolven: <strong>" + esc(t.name) + "</strong>" + (n.protect === t.id && t.role !== "meisje" ? ' <span class="tag good">beschermd</span>' : "") + (n.infect ? ' <span class="tag wolf">wordt besmet</span>' : "") : "De weerwolven hebben niemand gekozen.") + "</p>";
+        h += '<div class="facts"><div class="fact"><h3>Levenselixer</h3><p>' + (n.healed ? "Gebruikt op " + esc(t.name) : S.witch.heal ? "Nog beschikbaar" : "Op") + '</p></div><div class="fact"><h3>Gif</h3><p>' + (n.poison ? "Gegeven aan " + esc(nameOf(n.poison)) : S.witch.poison ? "Nog beschikbaar" : "Op") + "</p></div></div>";
+        if (S.witch.heal && t && !n.healed) h += '<div class="btns"><button type="button" class="btn" data-action="heal">Levenselixer op ' + esc(t.name) + "</button></div>";
         if (S.witch.poison && !n.poison) {
-          const sel = picks("act");
-          h += '<div class="stack"><h3>Gifdrank geven aan</h3>' + picker("act", 1, L.filter(p => p.role !== "heks")) +
-            '<div class="btns"><button type="button" class="btn danger" data-action="poison"' + (sel.length ? "" : " disabled") + ">Vergiftigen</button></div></div>";
+          h += '<div class="stack"><h3>Gif geven aan</h3>' + picker("act", 1, L.filter(p => !n.healed || p.id !== n.wolfTarget)) +
+            '<div class="btns">' + go("poison", "Vergiftigen", sel.length, "danger") + "</div></div>";
         }
         return h + '<div class="btns">' + next("Klaar met de Heks", "primary") + "</div>";
       }
-      case "raaf": {
-        const sel = picks("act");
-        return picker("act", 1, L) + '<div class="btns"><button type="button" class="btn primary" data-action="raven"' + (sel.length ? "" : " disabled") + ">Markeren</button>" + next("Niemand") + "</div>";
-      }
+      case "zigeunerin":
+        return '<p class="note">Lees de vragen van je vijf Spiritisme-kaarten voor. Morgen beantwoordt de eerste dode van vannacht de vraag met ja of nee.</p>' +
+          '<div class="btns">' + go("spirit", "Ze gebruikt een kaart", true) + next("Niet vannacht") + "</div>";
+      case "raaf":
+        return picker("act", 1, L) + '<div class="btns">' + go("raven", "Markeren", sel.length) + next("Niemand") + "</div>";
+      case "pyromaan":
+        return '<p class="note">Dit kan maar één keer per spel. Kies de speler wiens gebouw afbrandt.</p>' + picker("act", 1, L) +
+          '<div class="btns">' + go("fire", "In brand steken", sel.length, "danger") + next("Niet vannacht") + "</div>";
       case "fluitspeler": {
-        const sel = picks("act");
         const cands = L.filter(p => !p.charmed && p.role !== "fluitspeler");
         const need = Math.min(2, cands.length);
-        return picker("act", 2, cands) + '<div class="btns"><button type="button" class="btn primary" data-action="charm"' + (sel.length === need && need ? "" : " disabled") + ">Betoveren</button>" + next() + "</div>";
+        return picker("act", 2, cands) + '<div class="btns">' + go("charm", "Betoveren", need && sel.length === need) + next() + "</div>";
       }
-      case "betoverden": {
-        const c = living().filter(p => p.charmed).map(p => p.name);
-        return "<p>Tik aan: " + esc(list(c)) + ".</p><div class=\"btns\">" + next("Volgende", "primary") + "</div>";
-      }
+      case "betoverden":
+        return "<p>Tik aan: " + esc(list(living().filter(p => p.charmed).map(p => p.name))) + ".</p><div class=\"btns\">" + next("Volgende", "primary") + "</div>";
       case "dageraad": {
         const items = [];
+        if (S.rusty) items.push(nameOf(S.rusty) + " sterft aan het roestige zwaard");
+        if (n.actor) items.push("Toneelspeler speelt " + ROLES[n.actor].name);
         if (n.protect) items.push("Beschermd: " + nameOf(n.protect));
         items.push("Weerwolven kozen: " + (n.wolfTarget ? nameOf(n.wolfTarget) : "niemand"));
-        if (n.healed) items.push("Heks redde " + nameOf(n.wolfTarget));
-        if (n.whiteKill) items.push("Witte weerwolf doodde " + nameOf(n.whiteKill));
-        if (n.poison) items.push("Heks vergiftigde " + nameOf(n.poison));
-        if (n.raven) items.push("Raaf markeerde " + nameOf(n.raven));
+        if (n.infect) items.push("Oerwolf besmet " + nameOf(n.wolfTarget));
+        if (n.bigKill) items.push("Grote Boze Wolf kiest " + nameOf(n.bigKill));
+        if (n.healed) items.push("Heks redt " + nameOf(n.wolfTarget));
+        if (n.whiteKill) items.push("Witte weerwolf kiest " + nameOf(n.whiteKill));
+        if (n.poison) items.push("Heks vergiftigt " + nameOf(n.poison));
+        if (n.spirit) items.push("Zigeunerin gebruikt een Spiritisme-kaart");
+        if (n.raven) items.push("Raaf markeert " + nameOf(n.raven));
         return '<div class="stack"><h3>Wat er vannacht gebeurde</h3><ul>' + items.map(i => "<li>" + esc(i) + "</li>").join("") + "</ul></div>" +
           '<button type="button" class="btn primary full" data-action="dawn">Laat het dorp ontwaken</button>';
       }
     }
     return '<div class="btns">' + next("Volgende", "primary") + "</div>";
+  }
+
+  function revealHtml(p, recordAction) {
+    let h = '<div class="stack"><h3>' + esc(p.name) + ' is</h3><p class="big-reveal">' + esc(p.role ? ROLES[p.role].name : "Nog onbekend") + "</p>";
+    if (p.infected) h += '<p class="note">Let op: deze speler is besmet en hoort bij de weerwolven.</p>';
+    if (!p.role) h += '<p class="note">Kijk mee naar de kaart en leg de rol vast.</p><div class="addrow">' + roleSelect("seer-role", "Rol van " + p.name, roleOptions("", false)) + '<button type="button" class="btn" data-action="' + recordAction + '">Vastleggen</button></div>';
+    return h + "</div>";
   }
 
   function renderNight() {
@@ -761,7 +1003,7 @@ input[type="text"] { width: 100%; }
     if (ui.pickKey !== key) { ui.pickKey = key; ui.picks = {}; }
     const idx = steps.indexOf(cur);
     let h = '<ol class="order" aria-label="Volgorde van deze nacht">' + steps.map((s, i) =>
-      '<li class="' + (S.night.done.includes(s.id) ? "done" : s === cur ? "now" : "") + (s.dead ? " dead" : "") + '"' + (s === cur ? ' aria-current="step"' : "") + "><span><b>" + (i + 1) + "</b></span>" + esc(s.title.replace(/^De /, "")) + "</li>"
+      '<li class="' + (S.night.done.includes(s.id) ? "done" : s === cur ? "now" : "") + (s.dead ? " dead" : "") + '"' + (s === cur ? ' aria-current="step"' : "") + "><span><b>" + (i + 1) + "</b></span>" + esc(s.title.replace(/^(De|Het) /, "")) + "</li>"
     ).join("") + "</ol>";
     let script = cur.script;
     if (cur.id === "weerwolven" && S.round === 1) script = "Weerwolven, word wakker en kijk wie de andere weerwolven zijn. Kies samen een slachtoffer. Sluit je ogen weer.";
@@ -770,7 +1012,7 @@ input[type="text"] { width: 100%; }
       '<article class="card"><div><p class="eyebrow">Stap ' + (idx + 1) + " van " + steps.length + "</p><h2>" + esc(cur.title) + "</h2>" + whoLine(cur) + "</div>" +
       '<div class="script"><span class="label">Voorlezen</span><p>' + esc(script) + "</p></div>" +
       identifyHtml(cur) + stepBody(cur) + "</article></div>";
-    if (S.round === 1 && cur.id !== "dageraad" && idx === 0) h += '<p class="note" style="margin-top:12px">Begin met: “Het wordt nacht in Wakkerdam. Iedereen sluit de ogen.”</p>';
+    if (S.round === 1 && idx === 0) h += '<p class="note" style="margin-top:12px">Begin met: “Het wordt nacht in Wakkerdam. Iedereen sluit de ogen.”</p>';
     return h;
   }
 
@@ -780,11 +1022,11 @@ input[type="text"] { width: 100%; }
     const d = S.day;
     let h = '<div class="stack" style="margin-top:16px">';
     const deaths = S.recent;
+    const dead = deaths.filter(x => x.cause !== "dorpsgek").length;
     h += '<article class="card"><p class="eyebrow">Sinds het ochtendgloren</p>';
-    if (!deaths.length) h += "<h2>Niemand is gestorven</h2><div class=\"script\"><span class=\"label\">Voorlezen</span><p>Het dorp wordt wakker. Vannacht is er niemand gestorven.</p></div>";
+    if (!deaths.length) h += '<h2>Niemand is gestorven</h2><div class="script"><span class="label">Voorlezen</span><p>Het dorp wordt wakker. Vannacht is er niemand gestorven.</p></div>';
     else {
-      const nightDeaths = deaths.filter(x => ["weerwolven", "wittewolf", "gif", "liefde"].includes(x.cause));
-      const dead = deaths.filter(x => x.cause !== "dorpsgek").length;
+      const nightDeaths = deaths.filter(x => ["weerwolven", "grotewolf", "wittewolf", "gif", "liefde", "roest", "kolos"].includes(x.cause));
       h += "<h2>" + (dead === 0 ? "Niemand is gestorven" : dead === 1 ? "Eén dode" : dead + " doden") + "</h2>";
       if (nightDeaths.length) h += '<div class="script"><span class="label">Voorlezen</span><p>Het dorp wordt wakker, behalve ' + esc(list(nightDeaths.map(x => nameOf(x.id)))) + ".</p></div>";
       h += '<ul class="rows">' + deaths.map(x => {
@@ -792,40 +1034,52 @@ input[type="text"] { width: 100%; }
         return '<li class="' + (p.alive ? "" : "dead") + '"><div class="grow"><span class="pname">' + esc(p.name) + '</span><p class="note">' + esc(roleLabel(p)) + " · " + esc(x.cause === "dorpsgek" ? "weggestemd, maar blijft leven als Dorpsgek" : CAUSE[x.cause]) + "</p></div></li>";
       }).join("") + "</ul>";
     }
+    const bear = bearGrowls();
+    if (bear) h += '<p class="note"><strong>Titus:</strong> ' + (bear.growl ? "de beer gromt! Grom hardop." : "de beer blijft stil.") + "</p>";
+    if (d.spirit) {
+      const first = deaths.find(x => x.cause !== "dorpsgek");
+      h += '<p class="note"><strong>Zigeunerin:</strong> ' + (first ? esc(nameOf(first.id)) + " beantwoordt de Spiritisme-vraag met ja of nee." : "er is niemand gestorven, dus de vraag vervalt.") + "</p>";
+    }
     h += "</article>";
     const pend = pendingHtml();
     if (pend) return h + pend + "</div>";
     h += winHtml();
 
     const L = living();
-    if (S.opts.mayor && !d.voted && !d.electionDone && !L.some(p => p.mayor) && !S.players.some(p => p.mayor)) {
-      const sel = picks("elect");
-      h += '<article class="card"><p class="eyebrow">Verkiezing</p><h2>Kies een burgemeester</h2><p class="note">De stem van de burgemeester telt dubbel bij een gelijke stand.</p>' + picker("elect", 1, L) +
-        '<div class="btns"><button type="button" class="btn primary" data-action="elect"' + (sel.length ? "" : " disabled") + '>Benoemen</button><button type="button" class="btn quiet" data-action="elect-skip">Overslaan</button></div></article>';
+    if (S.opts.mayor && !d.voted && !d.electionDone && !S.players.some(p => p.mayor)) {
+      h += '<article class="card"><p class="eyebrow">Verkiezing</p><h2>Kies een burgemeester</h2><p class="note">De stem van de burgemeester telt dubbel bij een gelijke stand.</p>' + picker("elect", 1, L.filter(p => p.canVote)) +
+        '<div class="btns"><button type="button" class="btn primary" data-action="elect"' + (picks("elect").length ? "" : " disabled") + '>Benoemen</button><button type="button" class="btn quiet" data-action="elect-skip">Overslaan</button></div></article>';
     }
 
     if (!d.voted) {
-      const counts = L.map(p => d.votes[p.id] || 0);
-      const max = Math.max(0, ...counts);
+      const max = Math.max(0, ...L.map(p => d.votes[p.id] || 0));
       const top = L.filter(p => max > 0 && (d.votes[p.id] || 0) === max);
-      h += '<article class="card vote"><p class="eyebrow">Stemming</p><h2>Wie wordt er weggestemd?</h2>';
-      if (d.raven && P(d.raven).alive) h += '<p class="note">De Raaf heeft ' + esc(nameOf(d.raven)) + " gemarkeerd: al 2 stemmen tegen.</p>";
+      h += '<article class="card vote"><p class="eyebrow">' + (d.second ? "Tweede stemming" : "Stemming") + "</p><h2>Wie wordt er weggestemd?</h2>";
+      if (d.raven && P(d.raven).alive && !d.second) h += '<p class="note">De Raaf heeft ' + esc(nameOf(d.raven)) + " gemarkeerd: al 2 stemmen tegen.</p>";
+      if (d.voteOnly) h += '<p class="note warn">Op last van de Zondebok mogen vandaag alleen ' + esc(list(d.voteOnly.map(nameOf))) + " stemmen.</p>";
       h += '<p class="note">Tel de stemmen met + en −, of tik direct op een naam.</p>';
-      h += '<ul class="rows">' + L.map(p =>
-        '<li class="' + (ui.voteSel === p.id ? "on" : "") + '"><button type="button" class="vname" data-action="vote-sel" data-id="' + p.id + '"><span class="pname">' + esc(p.name) + "</span>" + playerTags(p) + "</button>" +
-        '<div class="ctr stepper"><button type="button" data-action="vote" data-id="' + p.id + '" data-delta="-1" aria-label="Stem minder voor ' + esc(p.name) + '">−</button><output>' + (d.votes[p.id] || 0) + '</output><button type="button" data-action="vote" data-id="' + p.id + '" data-delta="1" aria-label="Stem meer voor ' + esc(p.name) + '">+</button></div></li>'
-      ).join("") + "</ul>";
+      h += '<ul class="rows">' + L.map(p => {
+        const banned = d.voteOnly && !d.voteOnly.includes(p.id);
+        return '<li class="' + (ui.voteSel === p.id ? "on" : "") + '"><button type="button" class="vname" data-action="vote-sel" data-id="' + p.id + '"><span class="pname">' + esc(p.name) + "</span>" + playerTags(p) +
+          (banned ? '<span class="tags"><span class="tag">Mag vandaag niet stemmen</span></span>' : "") + "</button>" +
+          '<div class="ctr stepper"><button type="button" data-action="vote" data-id="' + p.id + '" data-delta="-1" aria-label="Stem minder voor ' + esc(p.name) + '">−</button><output>' + (d.votes[p.id] || 0) + '</output><button type="button" data-action="vote" data-id="' + p.id + '" data-delta="1" aria-label="Stem meer voor ' + esc(p.name) + '">+</button></div></li>';
+      }).join("") + "</ul>";
+      const goat = L.find(p => p.role === "zondebok");
       if (top.length > 1) {
         h += '<p class="note warn">Gelijke stand tussen ' + esc(list(top.map(p => p.name))) + ".";
-        if (roleStatus("zondebok") === "alive") h += " De Zondebok doet mee: bij gelijke stand sterft de Zondebok.";
-        else if (L.some(p => p.mayor)) h += " De burgemeester beslist.";
+        if (goat) h += " De Zondebok sterft in plaats van hen.";
+        else if (roleStatus("zondebok") === "alive") h += " Doet de Zondebok mee? Dan sterft hij.";
+        else if (L.some(p => p.mayor)) h += " De stem van de burgemeester beslist.";
         h += "</p>";
       }
       const pick = ui.voteSel ? P(ui.voteSel) : top.length === 1 ? top[0] : null;
       h += '<div class="btns">' + (pick ? '<button type="button" class="btn danger" data-action="vote-out" data-id="' + pick.id + '">' + esc(pick.name) + " wegstemmen</button>" : "") +
+        (top.length > 1 && goat ? '<button type="button" class="btn danger" data-action="vote-out" data-id="' + goat.id + '">Zondebok sterft</button>' : "") +
         '<button type="button" class="btn quiet" data-action="vote-none">Niemand wegstemmen</button></div></article>';
     } else {
-      h += '<article class="card"><p class="eyebrow">Stemming</p><h2>' + (d.out ? esc(nameOf(d.out)) + " is weggestemd" : "Niemand is weggestemd") + "</h2>" +
+      const judge = !S.powersLost && !S.used.raadsheer && L.find(p => p.role === "raadsheer");
+      h += '<article class="card"><p class="eyebrow">' + (d.second ? "Tweede stemming" : "Stemming") + "</p><h2>" + (d.out ? esc(nameOf(d.out)) + " is weggestemd" : "Niemand is weggestemd") + "</h2>" +
+        (judge ? '<button type="button" class="btn" data-action="second-vote">De raadsheer gaf het teken: tweede stemming</button>' : "") +
         '<button type="button" class="btn primary full" data-action="dusk">Laat de nacht vallen</button></article>';
     }
     return h + "</div>";
@@ -848,10 +1102,11 @@ input[type="text"] { width: 100%; }
   /* --- spelers --- */
 
   function playersTable(readonly) {
+    const ro = readonly || S.phase === "setup";
     return '<ol class="rows">' + S.players.map((p, i) =>
       '<li class="' + (p.alive ? "" : "dead") + '"><span class="num">' + (i + 1) + '</span><div class="grow"><span class="pname">' + esc(p.name) + "</span> " +
-      (readonly || S.phase === "setup" ? '<span class="muted small">' + esc(roleLabel(p)) + "</span>" : "") + "<div>" + playerTags(p) + "</div></div>" +
-      (readonly || S.phase === "setup" ? "" :
+      (ro ? '<span class="muted small">' + esc(roleLabel(p)) + "</span>" : "") + "<div>" + playerTags(p) + "</div></div>" +
+      (ro ? "" :
         '<select id="prole-' + p.id + '" aria-label="Rol van ' + esc(p.name) + '" data-change="setrole" data-id="' + p.id + '">' + roleOptions(p.role, true) + "</select>" +
         (p.alive
           ? '<button type="button" class="btn sm danger" data-action="p-kill" data-id="' + p.id + '">Dood</button>'
@@ -864,21 +1119,37 @@ input[type="text"] { width: 100%; }
     const L = living();
     const lovers = S.players.filter(p => p.lover);
     const charmed = L.filter(p => p.charmed);
+    const once = (r, used, label) => { if (roleStatus(r) !== "none") facts.push([ROLES[r].name, used ? label + " al gebruikt" : label + " nog over"]); };
     const facts = [];
     if (S.phase !== "setup") {
       const wolves = L.filter(isWolf).length;
       facts.push(["In leven", L.length + " spelers · " + wolves + " weerwolf" + (wolves === 1 ? "" : "ven") + (unknownAlive().length ? " · " + unknownAlive().length + " onbekend" : "")]);
-      if (roleStatus("heks") !== "none") facts.push(["Heks", "Levensdrank " + (S.witch.heal ? "nog over" : "op") + " · gifdrank " + (S.witch.poison ? "nog over" : "op")]);
-      if (roleStatus("beschermer") !== "none") facts.push(["Beschermer", S.lastProtected ? "Mag vannacht niet: " + nameOf(S.lastProtected) : "Nog niemand beschermd"]);
+      if (S.powersLost) facts.push(["Dorpsoudste", "Door het dorp gedood: burgers hebben geen gaven meer"]);
+      if (roleStatus("heks") !== "none") facts.push(["Heks", "Levenselixer " + (S.witch.heal ? "nog over" : "op") + " · gif " + (S.witch.poison ? "nog over" : "op")]);
+      if (roleStatus("beschermer") !== "none") facts.push(["Genezer", S.lastProtected ? "Mag vannacht niet: " + nameOf(S.lastProtected) : "Nog niemand beschermd"]);
       if (lovers.length) facts.push(["Geliefden", list(lovers.map(p => p.name))]);
-      if (S.wildModel) facts.push(["Voorbeeld wild kind", nameOf(S.wildModel)]);
+      if (S.wildModel) facts.push(["Voorbeeld Kleine wilde", nameOf(S.wildModel)]);
       if (charmed.length) facts.push(["Betoverd", list(charmed.map(p => p.name))]);
+      const inf = L.filter(p => p.infected);
+      if (inf.length) facts.push(["Besmet", list(inf.map(p => p.name))]);
+      once("oerwolf", S.used.oerwolf, "Besmetting");
+      once("aap", S.used.aap, "Gave");
+      once("pyromaan", S.used.pyromaan, "Brand");
+      once("raadsheer", S.used.raadsheer, "Tweede stemming");
+      if (roleStatus("vos") !== "none") facts.push(["Vos", S.used.foxLost ? "Gave verloren" : "Heeft zijn gave nog"]);
+      if (roleStatus("grotewolf") !== "none") facts.push(["Grote Boze Wolf", S.wolfLost ? "Mag niet meer extra doden" : "Mag nog extra doden"]);
+      if (roleStatus("toneelspeler") !== "none") facts.push(["Toneelspeler", S.used.toneel.length ? "Al gespeeld: " + list(S.used.toneel.map(r => ROLES[r].name)) : "Nog niets gespeeld"]);
+      if (S.rusty) facts.push(["Roestige zwaard", nameOf(S.rusty) + " sterft volgende nacht"]);
+      const sect = S.players.find(p => p.role === "sektarier");
+      if (sect && sect.group) facts.push(["Sektariër", sect.name + " zit in groep " + sect.group]);
+      const bear = bearGrowls();
+      if (bear) facts.push(["Titus", bear.growl ? "De beer zou nu grommen" : "De beer zou nu stil blijven"]);
       const mayor = L.find(p => p.mayor);
       if (mayor) facts.push(["Burgemeester", mayor.name]);
     }
     let h = '<section class="block"><h2>Wat je moet onthouden</h2>';
     h += facts.length ? '<div class="facts">' + facts.map(f => '<div class="fact"><h3>' + esc(f[0]) + "</h3><p>" + esc(f[1]) + "</p></div>").join("") + "</div>"
-      : '<p class="note">Zodra het spel begint, zie je hier de drankjes van de Heks, de geliefden, de betoverden en meer.</p>';
+      : '<p class="note">Zodra het spel begint, zie je hier de drankjes van de Heks, de geliefden, de betoverden en welke eenmalige gaven al gebruikt zijn.</p>';
     h += "</section>";
     h += '<section class="block"><div><h2>Spelers</h2><p class="note">' + (S.phase === "setup" ? "Namen en rollen pas je aan onder Spel." : "Vergissing gemaakt? Pas hier een rol aan of zet iemand op dood.") + "</p></div>" + playersTable(S.phase === "end") + "</section>";
     h += '<section class="block"><h2>Spel</h2>' + newGameHtml() + "</section>";
@@ -930,7 +1201,7 @@ input[type="text"] { width: 100%; }
     const name = inp.value.trim();
     if (!name) { inp.focus(); return; }
     act(() => {
-      if (S.sample) S.sample = false;
+      S.sample = false;
       S.players.push(mkPlayer(S.nextId++, name));
     });
     const again = document.getElementById("new-name");
@@ -945,6 +1216,8 @@ input[type="text"] { width: 100%; }
   }
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && S.phase !== "setup" && S.phase !== "end") keepAwake(); });
 
+  const pick1 = () => picks("act")[0];
+
   const H = {
     tab: d => { ui.tab = d.tab; ui.confirmNew = false; render(); window.scrollTo(0, 0); },
     undo: () => undo(),
@@ -957,6 +1230,7 @@ input[type="text"] { width: 100%; }
       render();
     },
 
+    "toggle-set": d => { ui.openSets[d.set] = !ui.openSets[d.set]; render(); },
     "add-player": () => addPlayer(),
     "remove-player": d => act(() => { S.sample = false; S.players = S.players.filter(p => p.id !== +d.id); }),
     deck: d => act(() => { S.deck[d.role] = Math.max(0, (S.deck[d.role] || 0) + +d.delta); }),
@@ -990,10 +1264,14 @@ input[type="text"] { width: 100%; }
         ids.forEach(id => (P(id).role = d.role));
         log(list(ids.map(nameOf)) + (ids.length > 1 ? " zijn " : " is ") + ROLES[d.role].name + ".");
       });
-      ui.picks.id = [];
-      render();
     },
     "step-next": d => act(() => done(d.step)),
+    sect: () => act(() => {
+      const a = picks("act");
+      living().forEach(p => (p.group = a.includes(p.id) ? "A" : "B"));
+      log("Groep A: " + list(a.map(nameOf)) + ". Groep B: " + list(living().filter(p => p.group === "B").map(p => p.name)) + ".");
+      done("sektarier");
+    }),
     "dief-swap": () => {
       const r = document.getElementById("dief-role").value;
       act(() => {
@@ -1010,22 +1288,56 @@ input[type="text"] { width: 100%; }
       log("Cupido maakt " + list(ids.map(nameOf)) + " verliefd.");
       done("cupido");
     }),
-    wild: () => act(() => { S.wildModel = picks("act")[0]; log("Het wilde kind kiest " + nameOf(S.wildModel) + " als voorbeeld."); done("wildkind"); }),
-    protect: () => act(() => { S.night.protect = picks("act")[0]; log("De Beschermer beschermt " + nameOf(S.night.protect) + "."); done("beschermer"); }),
+    wild: () => act(() => { S.wildModel = pick1(); log("De Kleine wilde kiest " + nameOf(S.wildModel) + " als voorbeeld."); done("wildkind"); }),
+    actor: () => {
+      const r = document.getElementById("actor-role").value;
+      act(() => { S.night.actor = r; S.used.toneel.push(r); log("De Toneelspeler speelt tot de volgende nacht " + ROLES[r].name + "."); });
+    },
+    protect: () => act(() => { S.night.protect = pick1(); log("De Genezer beschermt " + nameOf(S.night.protect) + "."); done("beschermer"); }),
     see: () => act(() => {
-      const p = P(picks("act")[0]);
+      const p = P(pick1());
       S.night.seen = p.id;
-      log("De Ziener bekijkt " + p.name + ": " + (p.role ? ROLES[p.role].name : "rol nog onbekend") + ".");
+      log("De Ziener bekijkt " + p.name + ": " + (p.role ? ROLES[p.role].name : "rol nog onbekend") + (p.infected ? " (besmet)" : "") + ".");
     }),
     "seer-record": () => {
       const r = document.getElementById("seer-role").value;
       act(() => { const p = P(S.night.seen); p.role = r; log(p.name + " is " + ROLES[r].name + "."); });
     },
-    wolves: () => act(() => { S.night.wolfTarget = picks("act")[0]; log("De weerwolven kiezen " + nameOf(S.night.wolfTarget) + "."); done("weerwolven"); }),
-    white: () => act(() => { S.night.whiteKill = picks("act")[0]; log("De Witte weerwolf kiest " + nameOf(S.night.whiteKill) + "."); done("wittewolf"); }),
-    heal: () => act(() => { S.witch.heal = false; S.night.healed = true; log("De Heks gebruikt haar levensdrank op " + nameOf(S.night.wolfTarget) + "."); }),
-    poison: () => act(() => { S.witch.poison = false; S.night.poison = picks("act")[0]; log("De Heks geeft haar gifdrank aan " + nameOf(S.night.poison) + "."); }),
-    raven: () => act(() => { S.night.raven = picks("act")[0]; log("De Raaf markeert " + nameOf(S.night.raven) + "."); done("raaf"); }),
+    fox: () => act(() => {
+      const mid = P(pick1());
+      const grp = [neighbour(mid, -1), mid, neighbour(mid, 1)].filter((q, i, a) => q && a.indexOf(q) === i);
+      S.night.fox = grp.map(p => p.id);
+      const hit = grp.some(isWolf);
+      if (!hit) S.used.foxLost = true;
+      log("De Vos snuffelt bij " + list(grp.map(p => p.name)) + ": " + (hit ? "minstens één weerwolf." : "geen weerwolf. De Vos verliest zijn gave."));
+    }),
+    aap: () => act(() => {
+      const p = P(pick1());
+      S.used.aap = true;
+      S.night.aap.push(p.id);
+      log("De Aap bekijkt " + p.name + ": " + (p.role ? ROLES[p.role].name : "rol nog onbekend") + ".");
+    }),
+    dog: d => act(() => {
+      const dog = S.players.find(p => p.alive && p.role === "wolfshond");
+      dog.orig = "wolfshond"; dog.role = d.choice;
+      log(dog.name + " (Wolfshond) kiest ervoor " + (d.choice === "weerwolf" ? "weerwolf" : "burger") + " te worden.");
+    }),
+    wolves: () => act(() => { S.night.wolfTarget = pick1(); log("De weerwolven kiezen " + nameOf(S.night.wolfTarget) + "."); done("weerwolven"); }),
+    infect: () => act(() => { S.night.infect = true; S.used.oerwolf = true; log("De Besmettelijke Oerwolf besmet " + nameOf(S.night.wolfTarget) + "."); done("oerwolf"); }),
+    bigwolf: () => act(() => { S.night.bigKill = pick1(); log("De Grote Boze Wolf kiest " + nameOf(S.night.bigKill) + "."); done("grotewolf"); }),
+    mother: () => act(() => {
+      const p = P(pick1());
+      const lost = isSpecialVillager(p.role) && !p.infected ? p.role : null;
+      if (lost) { p.orig = p.role; p.role = "burger"; }
+      S.night.mother = { id: p.id, lost };
+      log("De Machtige Wolvenmoeder wijst " + p.name + " aan" + (lost ? ": verliest de gave van " + ROLES[lost].name + "." : ". Er gebeurt niets."));
+    }),
+    white: () => act(() => { S.night.whiteKill = pick1(); log("De Witte weerwolf kiest " + nameOf(S.night.whiteKill) + "."); done("wittewolf"); }),
+    heal: () => act(() => { S.witch.heal = false; S.night.healed = true; log("De Heks gebruikt haar levenselixer op " + nameOf(S.night.wolfTarget) + "."); }),
+    poison: () => act(() => { S.witch.poison = false; S.night.poison = pick1(); log("De Heks geeft haar gif aan " + nameOf(S.night.poison) + "."); }),
+    spirit: () => act(() => { S.night.spirit = true; log("De Zigeunerin gebruikt een Spiritisme-kaart."); done("zigeunerin"); }),
+    raven: () => act(() => { S.night.raven = pick1(); log("De Raaf markeert " + nameOf(S.night.raven) + "."); done("raaf"); }),
+    fire: () => act(() => { S.used.pyromaan = true; log("De Pyromaan steekt het gebouw van " + nameOf(pick1()) + " in brand."); done("pyromaan"); }),
     charm: () => act(() => {
       const ids = picks("act");
       ids.forEach(id => (P(id).charmed = true));
@@ -1043,18 +1355,33 @@ input[type="text"] { width: 100%; }
         finishKill(p, it.cause);
       });
     },
-    "pend-shoot": () => act(() => { S.pending.shift(); killPlayer(picks("shoot")[0], "jager"); }),
+    "pend-shoot": () => act(() => { const it = S.pending.shift(); killPlayer(picks("shoot")[0], it.type === "kolos" ? "kolos" : "jager"); }),
     "pend-mayor": () => act(() => {
       S.pending.shift();
       const p = P(picks("succ")[0]);
       p.mayor = true;
       log(p.name + " is de nieuwe burgemeester.");
     }),
-    "pend-skip": () => act(() => { const it = S.pending.shift(); if (it.type === "jager") log("De Jager schiet niemand neer."); }),
+    "pend-voters": () => act(() => {
+      S.pending.shift();
+      S.nextVoteOnly = picks("voters");
+      log("De Zondebok bepaalt dat de volgende dag alleen " + list(S.nextVoteOnly.map(nameOf)) + " mogen stemmen.");
+    }),
+    "pend-maid": () => act(() => {
+      const it = S.pending.shift();
+      const p = P(it.id), maid = P(it.maid);
+      maid.orig = "dienstmeisje"; maid.role = p.role;
+      log(maid.name + " (Toegewijde dienstmeisje) neemt de rol " + ROLES[p.role].name + " over van " + p.name + ".");
+    }),
+    "pend-skip": () => act(() => {
+      const it = S.pending.shift();
+      if (it.type === "jager") log("De Jager schiet niemand neer.");
+      if (it.type === "kolos") log("De Kolos neemt niemand mee.");
+    }),
 
     elect: () => act(() => { const p = P(picks("elect")[0]); p.mayor = true; S.day.electionDone = true; log(p.name + " is gekozen tot burgemeester."); }),
     "elect-skip": () => act(() => { S.day.electionDone = true; }),
-    vote: d => act(() => { const id = +d.id; S.day.votes[id] = Math.max(0, (S.day.votes[id] || 0) + +d.delta); }),
+    vote: d => { const id = +d.id; S.day.votes[id] = Math.max(0, (S.day.votes[id] || 0) + +d.delta); persist(); render(); },
     "vote-sel": d => { ui.voteSel = ui.voteSel === +d.id ? null : +d.id; render(); },
     "vote-out": d => {
       act(() => {
@@ -1065,22 +1392,27 @@ input[type="text"] { width: 100%; }
       ui.voteSel = null; render();
     },
     "vote-none": () => act(() => { S.day.voted = true; S.day.out = null; log("Het dorp stemt niemand weg."); }),
+    "second-vote": () => act(() => {
+      S.used.raadsheer = true;
+      S.day.voted = false; S.day.out = null; S.day.votes = {}; S.day.second = true;
+      log("De Stotterende raadsheer geeft het teken: er volgt een tweede stemming.");
+    }),
     dusk: () => { act(() => startNight()); window.scrollTo(0, 0); },
 
     "win-end": () => act(() => { const w = winner(); S.endText = w ? w.text : ""; S.phase = "end"; log(w ? w.text : "Het spel is beëindigd."); }),
     "win-continue": () => act(() => { S.dismissed = winner().key; }),
 
     "p-kill": d => act(() => killPlayer(+d.id, "spelleider")),
-    "p-revive": d => act(() => { const p = P(+d.id); p.alive = true; log(p.name + " is door de spelleider weer tot leven gebracht."); }),
+    "p-revive": d => act(() => { const p = P(+d.id); p.alive = true; p.diedRound = null; log(p.name + " is door de spelleider weer tot leven gebracht."); }),
 
     "new-game": () => { ui.confirmNew = true; render(); },
     "new-cancel": () => { ui.confirmNew = false; render(); },
     "new-same": () => act(() => {
       const names = S.players.map(p => p.name), deck = S.deck, opts = S.opts;
       S = newState(names, false); S.deck = deck; S.opts = opts;
-      ui.confirmNew = false; ui.tab = "spel";
+      ui.confirmNew = false; ui.tab = "spel"; ui.openSets = null;
     }),
-    "new-fresh": () => act(() => { S = newState([], false); S.deck = emptyDeck(); ui.confirmNew = false; ui.tab = "spel"; })
+    "new-fresh": () => act(() => { S = newState([], false); S.deck = emptyDeck(); ui.confirmNew = false; ui.tab = "spel"; ui.openSets = null; })
   };
 
   const CH = {
