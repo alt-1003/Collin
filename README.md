@@ -10,7 +10,7 @@ Het is één bestand: open `index.html` in een browser (ook op je telefoon). De 
 2. **Rollen**: kies je doos (*Het Beste van* of *Alle dozen*), stel het aantal weerwolven in en tik de rollen aan. Wie geen rol heeft, is Gewone burger.
 3. **Kaarten delen**: deel de echte tegels uit (de app vraagt in de eerste nacht wie er wakker wordt), of laat de app verdelen en geef de telefoon rond.
 4. **De nacht**: één scherm per rol, in de juiste volgorde, met voorleestekst. Rollen die niet meedoen worden overgeslagen. Dode rollen kun je toch laten afroepen.
-5. **De dag**: ochtendgloren met de slachtoffers en de grom van de beer, daarna burgemeester kiezen, discussie en stemming, en de uitslag.
+5. **De dag**: ochtendgloren met de slachtoffers en de grom van de beer, daarna discussie en stemming, en de uitslag. De burgemeester wordt al voor de eerste nacht gekozen.
 6. De app ziet zelf wanneer een team of eenling gewonnen heeft.
 
 Onder **Menu** vind je het overzicht van wat je moet onthouden (drankjes van de Heks, geliefden, betoverden, eenmalige gaven), alle spelers met hun rol, het logboek en *Nieuw spel*. Met ↶ maak je een vergissing ongedaan.

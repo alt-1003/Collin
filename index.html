@@ -691,7 +691,7 @@ input[type="text"] { width: 100%; }
     let title, sub;
     if (S.phase === "setup") { title = "Voorbereiding"; sub = S.players.length + " spelers"; }
     else if (S.phase === "night") { title = "Nacht " + S.round; sub = L.length + " van de " + S.players.length + " spelers leven"; }
-    else if (S.phase === "day") { title = S.round === 0 ? "Eerste stemming" : "Dag " + S.round; sub = L.length + " van de " + S.players.length + " spelers leven"; }
+    else if (S.phase === "day") { title = S.round === 0 ? "Voor de eerste nacht" : "Dag " + S.round; sub = L.length + " van de " + S.players.length + " spelers leven"; }
     else { title = "Einde van het spel"; sub = "Na " + S.round + " rondes"; }
     if (ui.menu) { title = "Menu"; }
     document.getElementById("phase-title").textContent = title;
@@ -857,9 +857,9 @@ input[type="text"] { width: 100%; }
       choice("app", "De app verdeelt de rollen", "De app kiest willekeurig. Daarna geef je de telefoon rond, zodat iedereen alleen zijn eigen rol ziet.") + "</div>";
     if (mode === "app") h += '<div class="card"><p>De rollen zijn verdeeld. Geef nu de telefoon rond.</p><div class="btns"><button type="button" class="btn primary" data-action="show-roles">Telefoon rondgeven</button><button type="button" class="btn quiet" data-action="deal">Opnieuw verdelen</button></div><p class="note">Als spelleider zie je de verdeling onder Menu → Overzicht.</p></div>';
     h += '<div class="card"><h3>Instellingen</h3>' +
-      '<label class="check"><input type="checkbox" id="opt-mayor" data-change="opt" data-key="mayor"' + (S.opts.mayor ? " checked" : "") + '><span>Met burgemeester<br><span class="note">Op de eerste dag kiest het dorp een burgemeester. Zijn stem telt dubbel en beslist bij een gelijkspel.</span></span></label>' +
+      '<label class="check"><input type="checkbox" id="opt-mayor" data-change="opt" data-key="mayor"' + (S.opts.mayor ? " checked" : "") + '><span>Met burgemeester<br><span class="note">Voor de eerste nacht kiest het dorp een burgemeester. Zijn stem telt dubbel en beslist bij een gelijkspel.</span></span></label>' +
       '<label class="check"><input type="checkbox" id="opt-callDead" data-change="opt" data-key="callDead"' + (S.opts.callDead ? " checked" : "") + '><span>Dode rollen toch afroepen<br><span class="note">Zo verraad je niet welke rollen al dood zijn of hun gave al gebruikt hebben.</span></span></label></div>';
-    h += '<p class="note">' + (S.deck.engel > 0 ? "De Engel speelt mee, dus het spel begint met een discussie en een stemming." : "Het spel begint met de eerste nacht.") + "</p></section>";
+    h += '<p class="note">' + (S.opts.mayor ? "Het spel begint met de verkiezing van de burgemeester" + (S.deck.engel > 0 ? ", daarna een stemming omdat de Engel meespeelt." : ", daarna valt de eerste nacht.") : S.deck.engel > 0 ? "De Engel speelt mee, dus het spel begint met een discussie en een stemming." : "Het spel begint met de eerste nacht.") + "</p></section>";
     const ok = mode === "kaarten" || (mode === "app" && S.players.every(p => p.role));
     return { html: h, sec: B("Terug", "goto", { step: "rollen" }), pri: B("Start het spel →", "start", {}, ok && !setupProblems().length) };
   }
@@ -1145,7 +1145,13 @@ input[type="text"] { width: 100%; }
 
   /* --- dag --- */
 
-  const electionNeeded = () => S.opts.mayor && !S.day.electionDone && !S.players.some(p => p.mayor);
+  const electionNeeded = () => S.opts.mayor && !S.electionHeld && !S.players.some(p => p.mayor);
+  // Na de verkiezing voor de eerste nacht: door naar de Engel-stemming, of meteen de nacht in.
+  function afterElection() {
+    S.electionHeld = true;
+    if (S.round === 0) { if (S.deck.engel > 0) S.day.stage = "ochtend"; else startNight(); }
+    else S.day.stage = "stemming";
+  }
 
   function morningCard() {
     const d = S.day;
@@ -1185,8 +1191,9 @@ input[type="text"] { width: 100%; }
 
     if (stage === "verkiezing") {
       return {
-        html: '<article class="card"><p class="eyebrow">Verkiezing</p><h2>Kies een burgemeester</h2>' + scriptBox("Het dorp kiest een burgemeester. Wie wordt het?") +
-          '<p class="note">Zijn stem telt dubbel en beslist bij een gelijkspel. Hij mag niet weigeren.</p>' + picker("elect", 1, L.filter(p => p.canVote), chosenLine("{} wordt burgemeester.")) + "</article>",
+        html: '<article class="card"><p class="eyebrow">' + (S.round === 0 ? "Voor de eerste nacht" : "Verkiezing") + '</p><h2>Kies een burgemeester</h2>' +
+          scriptBox(S.round === 0 ? "Voordat de eerste nacht valt, kiest het dorp een burgemeester. Wie wordt het?" : "Het dorp kiest een nieuwe burgemeester. Wie wordt het?") +
+          '<p class="note">Zijn stem telt dubbel en beslist bij een gelijkspel. Hij mag niet weigeren. ' + (S.round === 0 ? (S.deck.engel > 0 ? "Daarna volgt de stemming, omdat de Engel meespeelt." : "Daarna valt de eerste nacht.") : "") + "</p>" + picker("elect", 1, L.filter(p => p.canVote), chosenLine("{} wordt burgemeester.")) + "</article>",
         pri: B("Benoemen →", "elect", {}, picks("elect").length), sec: B("Overslaan", "elect-skip")
       };
     }
@@ -1310,7 +1317,7 @@ input[type="text"] { width: 100%; }
     if (!S.log.length) return '<p class="note">Hier komt alles te staan wat er in het spel gebeurt, per ronde.</p>';
     const groups = [];
     for (const e of S.log) {
-      const label = e.ph === "setup" ? "Voorbereiding" : e.ph === "day" && e.r === 0 ? "Eerste stemming" : (e.ph === "day" ? "Dag " : "Nacht ") + e.r;
+      const label = e.ph === "setup" ? "Voorbereiding" : e.ph === "day" && e.r === 0 ? "Voor de eerste nacht" : (e.ph === "day" ? "Dag " : "Nacht ") + e.r;
       let g = groups[groups.length - 1];
       if (!g || g.label !== label) { g = { label, items: [] }; groups.push(g); }
       g.items.push(e.t);
@@ -1433,9 +1440,11 @@ input[type="text"] { width: 100%; }
         syncBurgers();
         const inPlay = ORDER.filter(r => S.deck[r] > 0).map(r => S.deck[r] + "× " + ROLES[r].name);
         log("Het spel begint met " + S.players.length + " spelers: " + inPlay.join(", ") + ".");
-        if (S.deck.engel > 0) {
+        if (S.opts.mayor || S.deck.engel > 0) {
+          // Voor de eerste nacht: eerst de burgemeester kiezen, en als de Engel meespeelt een stemming.
           S.phase = "day"; S.round = 0; S.day = freshDay(); S.recent = [];
-          log("De Engel speelt mee: het spel begint met een discussie en een stemming.");
+          S.day.stage = S.opts.mayor ? "verkiezing" : "ochtend";
+          if (S.deck.engel > 0) log("De Engel speelt mee: voor de eerste nacht is er een discussie en een stemming.");
         } else {
           S.phase = "night"; S.round = 1;
           log("Nacht 1 begint.");
@@ -1528,8 +1537,8 @@ input[type="text"] { width: 100%; }
 
     // dag
     "day-next": () => { act(() => { S.day.stage = electionNeeded() ? "verkiezing" : "stemming"; }); toTop(); },
-    elect: () => act(() => { const p = P(picks("elect")[0]); p.mayor = true; S.day.electionDone = true; S.day.stage = "stemming"; log(p.name + " is gekozen tot burgemeester."); }),
-    "elect-skip": () => act(() => { S.day.electionDone = true; S.day.stage = "stemming"; }),
+    elect: () => { act(() => { const p = P(picks("elect")[0]); p.mayor = true; log(p.name + " is gekozen tot burgemeester."); afterElection(); }); toTop(); },
+    "elect-skip": () => { act(() => afterElection()); toTop(); },
     vote: d => { const id = +d.id; S.day.votes[id] = Math.max(0, (S.day.votes[id] || 0) + +d.delta); persist(); render(); },
     "vote-sel": d => { ui.voteSel = ui.voteSel === +d.id ? null : +d.id; render(); },
     "vote-out": d => {
